@@ -1,0 +1,19 @@
+{
+  "name": "forest-ens",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "probe": "node --no-network-family-autoselection --env-file-if-exists=.env --import tsx probe.ts",
+    "break:fork": "node --no-network-family-autoselection --env-file-if-exists=.env --import tsx break-fork.ts",
+    "signal": "node --no-network-family-autoselection --env-file-if-exists=.env --import tsx send-signal.ts",
+    "read": "node --no-network-family-autoselection --env-file-if-exists=.env --import tsx read.ts",
+    "deploy-forest": "node --no-network-family-autoselection --env-file-if-exists=.env --import tsx setup.ts"
+  },
+  "dependencies": {
+    "viem": "^2.57.16"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "tsx": "^4.23.15"
+  }
+}

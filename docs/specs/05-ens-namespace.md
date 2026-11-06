@@ -24,7 +24,13 @@ Register the forest's name on Sepolia under ENS v2, with its own subname registr
 
 ## Implementation Decisions
 
-- ENS v2 on Sepolia, the 2026-09-15 redeploy. The ensjs v2 support is an unmerged PR, so deploy scripts may talk to the contracts-v2 deployment directly with viem. Open verification 4 asks ENS which tooling to use.
+- ENS v2 on Sepolia, the 2026-09-15 redeploy. The ensjs v2 support is an unmerged PR, so deploy scripts talk to the contracts-v2 deployment directly with viem. Open verification 4 asks ENS which tooling to use.
+- **Contract addresses** (checked live on Sepolia, all have code) are in `scripts/ens/addresses.ts`. `pnpm probe` in `scripts/ens` rechecks them. viem's default Sepolia universal resolver is already the v2 `UpgradableUniversalResolverProxy`, so `getEnsText` and `getEnsAddress` read v2 names with no override.
+- **The forest name is a real .eth name** bought through the ETH Registrar (commit-reveal, paid in Sepolia ETH) before anything else runs. `ourforest.eth` is a placeholder and may be taken; the name is the first thing to settle. Resolving an unregistered name returns `null`, not an error, so a missing name and a name with no records look the same.
+- **Writes use DNS-encoded names.** v2 resolver setters take `bytes name` in DNS wire format (viem `packetToBytes`), not a namehash.
+- **Listening:** the v2 resolver emits `TextUpdated(recordId, keyHash, key, value)`, not `TextChanged`. `recordId` is not the namehash; the `Linked(recordId, node, name)` event maps it to a name. The app should read `forest.status` on a timer and use the event only as a hint.
+- **Each plant resolver is deployed through the `VerifiableFactory`** as a proxy of `PermissionedResolverImpl`, with `initialize(grants, calls)` setting the guardian's roles. One factory deploy per plant, each with its own salt.
+- **Every plant agent key needs Sepolia ETH** to pay gas for its own ENS writes, separate from its 0G funds.
 - **Forest subnames:**
   - Subnames are owned tokens in a `UserRegistry` attached to the forest name with `setSubregistry`.
   - Each plant is registered with `register(label, owner, registry, resolver, roleBitmap, expiry)`, as the ENS registry docs describe.
@@ -47,6 +53,8 @@ Register the forest's name on Sepolia under ENS v2, with its own subname registr
   3. The plant agent writes `forest.persona`: reverts.
   4. The plant agent writes another plant's `forest.status`: reverts.
   5. The app's discovery from the forest name returns every plant.
+  6. The plant agent writes a key it was not granted (`forest.persona`) and the revert is an access-role error, not a generic failure.
+  7. A guardian write after the agent's write still succeeds: the agent's grant does not lock the guardian out.
 
 ## Out of Scope
 
