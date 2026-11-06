@@ -47,7 +47,7 @@ Must-shows: full journey (request, person verifies, backend validates, protected
 - [x] W3. Dropped for testing and the demo: no spending caps in Groot's wallet. Outsiders still need World ID; listed under Limitations in the README.
 - [x] W4. Dropped: a per-person limit would block our own testing with few World IDs. Wallet caps (W3) were dropped too.
 - [ ] W5. Failed path recorded for the demo: unverified person asks for money, nothing sent. Owner: D
-- [ ] W6. `registerHuman` running for real on 0G Galileo: set `CHAIN_ID=16602`, `CHAIN_RPC_URL=https://evmrpc-testnet.0g.ai` and the guardian key in `worldcoin/.env`, run one claim. Owner: Ra
+- [x] W6. `registerHuman` running for real on 0G Galileo: set `CHAIN_ID=16602`, `CHAIN_RPC_URL=https://evmrpc-testnet.0g.ai` and the guardian key in `worldcoin/.env`, run one claim. Owner: Ra
 - [ ] W7. `docs/sponsors/WORLD_DEBRIEF.md` filled. Owner: Ra
 
 ## Ship
