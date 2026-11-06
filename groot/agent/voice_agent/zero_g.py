@@ -7,8 +7,9 @@ from typing import Any
 from openai import AsyncOpenAI
 
 DEFAULT_BASE_URL = "https://router-api.0g.ai/v1"
-DEFAULT_MODEL = "qwen3-omni-flash"
-TIMEOUT_SECONDS = 8
+DEFAULT_MODEL = "glm-5.3-flash"
+TIMEOUT_SECONDS = 20
+MAX_TOKENS = 2000
 
 
 class ZeroGNotConfigured(RuntimeError):

@@ -159,7 +159,7 @@ class InnerLoop:
         ]
         for _ in range(MAX_STEPS):
             try:
-                resp = await self.client.chat.completions.create(model=self.model, messages=messages, tools=_TOOLS, max_tokens=400)
+                resp = await self.client.chat.completions.create(model=self.model, messages=messages, tools=_TOOLS, max_tokens=zero_g.MAX_TOKENS)
             except Exception as e:
                 logger.warning("0G call failed, waiting: %s", e)
                 return await self._wait("0G did not answer")

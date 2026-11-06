@@ -25,8 +25,12 @@ def test_config_defaults(monkeypatch):
     monkeypatch.delenv("ZG_MODEL", raising=False)
     config = zero_g.config()
     assert config.base_url == "https://router-api.0g.ai/v1"
-    assert config.model == "qwen3-omni-flash"
-    assert config.timeout == 8
+    assert config.model == "glm-5.3-flash"
+    assert config.timeout == 20
+
+
+def test_reasoning_models_get_room_to_think():
+    assert zero_g.MAX_TOKENS >= 2000
 
 
 def test_config_requires_key(monkeypatch):
@@ -169,3 +173,20 @@ def test_describe_photo_timeout_means_could_not_see(monkeypatch):
     monkeypatch.setattr(plant_tools.zero_g, "client", lambda: client)
     monkeypatch.setattr(plant_tools.zero_g, "config", lambda: zero_g.ZeroGConfig("k", "u", "qwen3-omni-flash"))
     assert asyncio.run(plant_tools.describe_photo("data:image/jpeg;base64,AAAA")) == plant_tools.COULD_NOT_SEE
+
+
+def test_describe_photo_leaves_room_to_think(monkeypatch):
+    from voice_agent import plant_tools
+
+    client, completions = fake_client(_response(content="a drooping plant"))
+    monkeypatch.setattr(plant_tools.zero_g, "client", lambda: client)
+    monkeypatch.setattr(plant_tools.zero_g, "config", lambda: zero_g.ZeroGConfig("k", "u", "glm-5.3-flash"))
+    assert asyncio.run(plant_tools.describe_photo("data:image/jpeg;base64,AAAA")) == "a drooping plant"
+    assert completions.calls[0]["max_tokens"] == zero_g.MAX_TOKENS
+
+
+def test_inner_loop_leaves_room_to_think(inner):
+    client, completions = fake_client(_response(tool_calls=[_tool_call("sleep", json.dumps({"minutes": 15, "diary": "ok"}))]))
+    loop = inner(client)
+    asyncio.run(loop._moment(""))
+    assert completions.calls[0]["max_tokens"] == zero_g.MAX_TOKENS

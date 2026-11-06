@@ -83,7 +83,7 @@ async def describe_photo(data_url: str) -> str:
                     ],
                 }
             ],
-            max_tokens=300,
+            max_tokens=zero_g.MAX_TOKENS,
         )
     except Exception:
         logger.exception("0G vision call failed")
