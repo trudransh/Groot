@@ -55,6 +55,16 @@ export type ZeroGMeta = {
   raw: string
 }
 
+export type RecordLimits = {
+  waterPriceWeiPerMl: string
+  maxWaterMlPerOrder: number
+  waterMlToday: number
+  maxWaterMlPerDay: number
+  shareLimitBps: number
+  minConfidence: number
+  minWaterGapS: number
+}
+
 export type DecisionRecord = {
   version: 1
   checkpointId: string
@@ -70,6 +80,7 @@ export type DecisionRecord = {
     giftedInWindowWei: string
     openHelpRequests: { id: number; plantName: string; amountWei: string; filledWei: string }[]
     ownOpenRequestId: number
+    limits?: RecordLimits
   }
   zeroG: ZeroGMeta
   decision: Decision | null

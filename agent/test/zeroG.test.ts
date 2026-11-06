@@ -48,6 +48,13 @@ describe('ZeroGDecider', () => {
     expect(r.zeroG?.requestId).toBe('chatcmpl-1')
   })
 
+  it('takes the request id and provider from the 0G router trace', async () => {
+    const body = { id: 'chatcmpl-1', choices: [{ message: { content: json } }], x_0g_trace: { request_id: 'rt-7', provider: '0x00000000000000000000000000000000000000bb' } }
+    const f = vi.fn(async () => new Response(JSON.stringify(body), { status: 200 }))
+    const r = await new ZeroGDecider(port, { fetch: f as never }).decide(ctx)
+    expect(r.zeroG).toMatchObject({ requestId: 'rt-7', provider: '0x00000000000000000000000000000000000000bb' })
+  })
+
   it('parses a reply wrapped in a markdown fence', async () => {
     const f = vi.fn(async () => answer('```json\n' + json + '\n```'))
     const r = await new ZeroGDecider(port, { fetch: f as never }).decide(ctx)

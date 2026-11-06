@@ -1,5 +1,5 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
-import { formatEther } from 'viem'
+import { formatEther, parseEther } from 'viem'
 import { addPlant, createForest, readForest, type Forest } from './forest.js'
 import { clientsFor, forestLabel, plantsFromEnv, pub } from './env.js'
 
@@ -37,6 +37,16 @@ for (let i = 0; i < plants.length; i++) {
   const labels = [...new Set([...existing, ...plants.slice(0, i + 1).map((p) => p.label)])]
   await addPlant(guardian, forest, plant, labels)
   console.log('added', `${plant.label}.${forest.name}`, 'agent', plant.agent)
+}
+
+const GAS_FLOOR = parseEther('0.005')
+const GAS_TOPUP = parseEther('0.01')
+for (const plant of plants) {
+  const have = await pub.getBalance({ address: plant.agent })
+  if (have >= GAS_FLOOR) continue
+  const hash = await guardian.wallet.sendTransaction({ to: plant.agent, value: GAS_TOPUP, chain: guardian.wallet.chain, account: guardian.wallet.account! })
+  await pub.waitForTransactionReceipt({ hash })
+  console.log('funded', plant.label, 'agent with', formatEther(GAS_TOPUP), 'Sepolia ETH', hash)
 }
 
 console.log(await readForest(pub as never, forest.name))

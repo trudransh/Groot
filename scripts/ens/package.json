@@ -9,7 +9,8 @@
     "read": "node --no-network-family-autoselection --env-file-if-exists=.env --import tsx read.ts",
     "deploy-forest": "node --no-network-family-autoselection --env-file-if-exists=.env --import tsx setup.ts",
     "reservoir": "node --no-network-family-autoselection --env-file-if-exists=.env --import tsx reservoir.ts",
-    "register-name": "node --no-network-family-autoselection --env-file-if-exists=.env --import tsx register-name.ts"
+    "register-name": "node --no-network-family-autoselection --env-file-if-exists=.env --import tsx register-name.ts",
+    "describe": "node --no-network-family-autoselection --env-file-if-exists=.env --import tsx describe.ts"
   },
   "dependencies": {
     "viem": "^2.57.16"

@@ -26,14 +26,19 @@ export class ZeroGDecider implements Decider {
         signal: ac.signal,
       })
       if (!res.ok) return { decision: null, zeroG: null }
-      const data = (await res.json()) as { id?: string; choices?: { message?: { content?: string } }[] }
+      const data = (await res.json()) as {
+        id?: string
+        choices?: { message?: { content?: string } }[]
+        x_0g_trace?: { request_id?: string; provider?: `0x${string}` }
+      }
       const raw = data.choices?.[0]?.message?.content ?? ''
-      const requestId = res.headers.get('ZG-Res-Key') ?? data.id ?? ''
+      const requestId = data.x_0g_trace?.request_id ?? res.headers.get('ZG-Res-Key') ?? data.id ?? ''
+      const provider = data.x_0g_trace?.provider ?? this.port.provider
       if (requestId === '' || raw === '') return { decision: null, zeroG: null }
       const verified = await this.port.verify(requestId, raw).catch(() => null)
       return {
         decision: parseDecision(raw),
-        zeroG: { provider: this.port.provider, model: this.port.model, requestId, verified, raw },
+        zeroG: { provider, model: this.port.model, requestId, verified, raw },
       }
     } catch {
       return { decision: null, zeroG: null }

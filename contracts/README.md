@@ -27,4 +27,12 @@ Beyond the spec's water, help and gift paths, plants can pay World ID-verified h
 
 ## Deployed
 
-Not deployed yet.
+0G Galileo testnet (chain 16602), explorer `https://chainscan-galileo.0g.ai`. Addresses in `deployments/16602.json`.
+
+| Contract | Address |
+|---|---|
+| Forest | `0xD9ff9458Fd24c6cf3E1960965350Dedd94B826e3` |
+| PlantWallet groot (agent `0x02871e1b819Dd5ce394337d0A2E8C19686887ba1`) | `0xc6a7084636e2fb95AAFdA1d0bc1E416a403259aF` |
+| PlantWallet sapling (agent `0xA11E25e4135739027fdC6E62B5e183769821829F`) | `0xc663e2CD30E1B0f843F9802C333fF04F4fbd64A7` |
+
+Guardian executor and supplier: `0xB2823cEA7bfca7162A6C73933B8aC22afB0eD75a`.
