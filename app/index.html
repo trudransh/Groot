@@ -1,0 +1,370 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vantaraa Forest</title>
+<meta name="description" content="A forest of plant agents on 0G and ENS. Live from vantaraa.eth.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Lilita+One&family=JetBrains+Mono:wght@500;800&family=Nunito:wght@600;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --sky1: #5ec8ff; --sky2: #b8ecff; --grass1: #6fd14a; --grass2: #3f9b2c; --dirt: #8a5a2b;
+  --wood1: #c9853f; --wood2: #8f5520; --wood3: #5c3412; --gold: #ffd23f; --gold2: #f29e0c;
+  --water: #3fb5ff; --water2: #1272d6; --red: #ff4d4d; --ink: #2b1606; --paper: #fff5dc;
+  --leaf1: #4cd137; --leaf2: #2e9e2a; --leaf3: #a3e635; --trunk: #8b4a1c;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  font-family: 'Nunito', system-ui, sans-serif; color: var(--ink); min-height: 100vh;
+  background:
+    radial-gradient(circle at 85% 8%, #fff7b0 0 40px, transparent 41px),
+    radial-gradient(circle at 85% 8%, #fff7b055 0 70px, transparent 71px),
+    linear-gradient(180deg, var(--sky1) 0%, var(--sky2) 42%, var(--grass1) 42.2%, var(--grass2) 100%);
+  background-attachment: fixed; overflow-x: hidden;
+}
+.cloud { position: fixed; top: 6%; font-family: 'JetBrains Mono', monospace; color: #fff; opacity: .9; white-space: pre; font-size: 14px; line-height: 1; pointer-events: none; animation: drift 60s linear infinite; z-index: 0; }
+.cloud.b { top: 16%; animation-duration: 90s; animation-delay: -40s; font-size: 11px; }
+@keyframes drift { from { transform: translateX(-30vw); } to { transform: translateX(130vw); } }
+main { position: relative; z-index: 1; max-width: 1180px; margin: 0 auto; padding: 18px 16px 60px; }
+.title { font-family: 'Lilita One', cursive; text-align: center; margin: 6px 0 4px; font-size: clamp(34px, 7vw, 72px); letter-spacing: 1px; color: var(--gold);
+  -webkit-text-stroke: 3px var(--wood3); paint-order: stroke fill; text-shadow: 0 6px 0 var(--wood3), 0 10px 18px #0005; }
+.subtitle { text-align: center; font-weight: 800; color: #fff; text-shadow: 0 2px 0 #0006; margin: 0 auto 16px; font-size: clamp(13px, 2.4vw, 17px); background: #0b3d7355; border-radius: 16px; padding: 6px 14px; max-width: 860px; }
+.subtitle a { color: var(--gold); }
+.bar { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-bottom: 22px; }
+.res { display: flex; align-items: center; gap: 8px; background: linear-gradient(#3b2410, #23140a); border: 3px solid #120a04; border-radius: 999px; padding: 6px 16px 6px 8px;
+  color: #fff; font-family: 'Lilita One', cursive; font-size: clamp(14px, 2.6vw, 18px); box-shadow: inset 0 2px 0 #ffffff22, 0 4px 0 #0007; }
+.res .ico { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; font-size: 16px; border: 2px solid #0008; }
+.ico.gold { background: radial-gradient(circle at 35% 30%, #fff6a8, var(--gold) 45%, var(--gold2)); }
+.ico.water { background: radial-gradient(circle at 35% 30%, #d4f0ff, var(--water) 45%, var(--water2)); }
+.ico.gem { background: radial-gradient(circle at 35% 30%, #ffd1f7, #e04bd6 50%, #8a1f86); }
+.field { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); gap: 22px; }
+.base { position: relative; background: linear-gradient(180deg, #8be35f 0%, #5fbf3d 100%); border: 5px solid var(--wood3); border-radius: 26px; padding: 16px 16px 18px;
+  box-shadow: inset 0 0 0 4px #b6f08f, inset 0 -10px 0 #3e8f27, 0 10px 0 var(--wood3), 0 18px 30px #0004; overflow: hidden; }
+.base::after { content: ''; position: absolute; inset: auto 0 0 0; height: 46px; background: repeating-linear-gradient(90deg, #7a4a1f 0 18px, #6b3f19 18px 36px); border-top: 4px solid #4b2a0e; z-index: 0; }
+.plate { position: relative; z-index: 2; display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.name { font-family: 'Lilita One', cursive; font-size: clamp(26px, 5vw, 38px); color: #fff; -webkit-text-stroke: 2px var(--ink); paint-order: stroke fill; text-shadow: 0 4px 0 var(--ink); line-height: 1; }
+.ens { font-family: 'JetBrains Mono', monospace; font-size: 12px; background: #0006; color: #fff; padding: 3px 8px; border-radius: 8px; display: inline-block; margin-top: 6px; }
+.lvl { display: grid; place-items: center; width: 62px; height: 62px; flex: none; background: radial-gradient(circle at 35% 30%, #c9b6ff, #6c47ff 55%, #3a1fb0); border: 4px solid #1d0f5c;
+  border-radius: 16px; transform: rotate(45deg); box-shadow: 0 5px 0 #1d0f5c; }
+.lvl span { transform: rotate(-45deg); font-family: 'Lilita One', cursive; color: #fff; font-size: 13px; text-align: center; line-height: 1.05; -webkit-text-stroke: 1px #1d0f5c; paint-order: stroke fill; }
+.status { position: absolute; z-index: 3; top: 92px; right: 14px; font-family: 'Lilita One', cursive; padding: 6px 12px; border-radius: 12px; border: 3px solid var(--ink); font-size: 15px; box-shadow: 0 4px 0 var(--ink); }
+.status.ok { background: linear-gradient(#b6ff8f, #4cd137); }
+.status.thirsty { background: linear-gradient(#ffb3b3, var(--red)); color: #fff; animation: bob .7s ease-in-out infinite; }
+.status.unknown { background: #ddd; }
+@keyframes bob { 50% { transform: translateY(-5px) rotate(-3deg); } }
+.stage { position: relative; z-index: 1; display: grid; place-items: end center; min-height: 280px; margin-top: 4px; }
+pre.tree { margin: 0; font-family: 'JetBrains Mono', monospace; font-weight: 800; line-height: 1.02; font-size: clamp(11px, 2.05vw, 21px); text-align: left; filter: drop-shadow(0 6px 0 #0003);
+  transform-origin: 50% 100%; animation: sway 4.5s ease-in-out infinite; }
+.sapling pre.tree { font-size: clamp(17px, 3.1vw, 32px); animation-duration: 3.2s; }
+@keyframes sway { 0%, 100% { transform: rotate(-1.2deg); } 50% { transform: rotate(1.2deg); } }
+.l1 { color: var(--leaf1); } .l2 { color: var(--leaf2); } .l3 { color: var(--leaf3); } .tk { color: var(--trunk); } .fc { color: #fff; text-shadow: 0 0 6px #0008; }
+.gr { color: #2c7a17; } .fl { color: #ff5fa2; } .dr { color: var(--water); }
+.thirsty .l1, .thirsty .l2, .thirsty .l3 { color: #d9a441; } .thirsty pre.tree { animation-duration: 1.6s; }
+.drops { position: absolute; inset: 0; pointer-events: none; z-index: 2; }
+.drop { position: absolute; top: -20px; color: var(--water); font-family: 'JetBrains Mono', monospace; font-weight: 800; animation: fall 1.4s linear forwards; }
+@keyframes fall { to { transform: translateY(330px); opacity: .2; } }
+.stats { position: relative; z-index: 2; display: grid; gap: 10px; margin-top: 10px; }
+.meter { position: relative; height: 28px; background: #1d2b3a; border: 3px solid var(--ink); border-radius: 14px; overflow: hidden; box-shadow: inset 0 3px 0 #0006; }
+.meter i { position: absolute; inset: 0 auto 0 0; background: linear-gradient(180deg, #8fd8ff, var(--water) 50%, var(--water2)); transition: width .8s; }
+.meter b { position: absolute; inset: 0; display: grid; place-items: center; font-family: 'Lilita One', cursive; color: #fff; -webkit-text-stroke: 1px #000; paint-order: stroke fill; font-weight: 400; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { background: var(--paper); border: 3px solid var(--ink); border-radius: 12px; padding: 5px 10px; font-weight: 800; font-size: 13px; box-shadow: 0 3px 0 var(--ink); display: inline-flex; gap: 6px; align-items: center; }
+.chip a { color: #6b3fd6; text-decoration: none; }
+.chip a:hover { text-decoration: underline; }
+.persona { background: #fff9; border: 3px dashed #3e8f27; border-radius: 12px; padding: 8px 10px; font-size: 14px; font-style: italic; }
+.btn { font-family: 'Lilita One', cursive; font-size: 18px; letter-spacing: .5px; color: #fff; -webkit-text-stroke: 1px #1b4d00; paint-order: stroke fill; cursor: pointer;
+  background: linear-gradient(180deg, #a8f05a, #4caf1f); border: 4px solid #1b4d00; border-radius: 16px; padding: 10px 16px; box-shadow: inset 0 3px 0 #ffffff66, 0 6px 0 #1b4d00; transition: transform .08s; }
+.btn:active { transform: translateY(4px); box-shadow: inset 0 3px 0 #ffffff66, 0 2px 0 #1b4d00; }
+.btn[disabled] { filter: grayscale(.8); cursor: not-allowed; }
+.btn.blue { background: linear-gradient(180deg, #8fd8ff, #1d8be0); border-color: #0b3d73; box-shadow: inset 0 3px 0 #ffffff66, 0 6px 0 #0b3d73; -webkit-text-stroke: 1px #0b3d73; }
+.panel { margin-top: 26px; background: linear-gradient(180deg, var(--wood1), var(--wood2)); border: 5px solid var(--wood3); border-radius: 22px; padding: 14px; box-shadow: inset 0 3px 0 #ffffff33, 0 8px 0 var(--wood3); }
+.panel h2 { margin: 0 0 10px; font-family: 'Lilita One', cursive; font-weight: 400; color: var(--gold); -webkit-text-stroke: 2px var(--wood3); paint-order: stroke fill; font-size: clamp(22px, 4vw, 30px); text-shadow: 0 3px 0 var(--wood3); }
+.scroll { background: var(--paper); border: 3px solid var(--wood3); border-radius: 14px; padding: 8px; max-height: 420px; overflow: auto; }
+.log { display: grid; grid-template-columns: auto 1fr; gap: 8px 10px; align-items: start; padding: 8px; border-bottom: 2px dashed #d9b98a; font-size: 14px; }
+.log:last-child { border-bottom: 0; }
+.tag { font-family: 'Lilita One', cursive; padding: 3px 9px; border-radius: 10px; border: 2px solid var(--ink); white-space: nowrap; }
+.tag.water { background: #8fd8ff; } .tag.wait { background: #ffe58f; } .tag.other { background: #e3d0ff; }
+.mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; word-break: break-all; }
+.log a { color: #6b3fd6; font-weight: 800; }
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 12px; }
+.card { background: var(--paper); border: 3px solid var(--wood3); border-radius: 14px; padding: 10px 12px; font-size: 14px; }
+.card h3 { margin: 0 0 6px; font-family: 'Lilita One', cursive; font-weight: 400; font-size: 19px; }
+.card a { color: #6b3fd6; font-weight: 800; }
+.toast { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%) translateY(140%); z-index: 9; background: #23140a; color: #fff; border: 3px solid var(--gold); border-radius: 14px;
+  padding: 10px 16px; font-weight: 800; max-width: min(92vw, 640px); transition: transform .3s; box-shadow: 0 8px 20px #0007; visibility: hidden; }
+.toast.on { transform: translateX(-50%) translateY(0); visibility: visible; }
+.muted { opacity: .75; }
+footer { text-align: center; color: #fff; font-weight: 800; margin: 22px auto 0; font-size: 13px; background: #23140acc; border-radius: 999px; padding: 8px 16px; width: fit-content; max-width: 100%; }
+footer a { color: var(--gold); }
+@media (max-width: 520px) { .stage { min-height: 210px; } .status { top: 84px; } .base { padding: 12px; } }
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; } }
+</style>
+</head>
+<body>
+<div class="cloud">   .--.      .-(    ).
+ .-(    )-.  (___.__)__)
+(___.__)__)</div>
+<div class="cloud b">  .--.
+ (    ).
+(___.__)__)</div>
+<main>
+  <h1 class="title">Vantaraa Forest</h1>
+  <p class="subtitle">Plant agents that decide on <b>0G</b>, live as <b>ENS</b> names and share money instead of competing. Everything below is read live from <a id="forest-link" href="#">vantaraa.eth</a>.</p>
+  <div class="bar">
+    <div class="res"><span class="ico gold">$</span><span id="usdc-total">… USDC</span></div>
+    <div class="res"><span class="ico water">💧</span><span id="orders-total">… water orders</span></div>
+    <div class="res"><span class="ico gem">◆</span><span id="decisions-total">… 0G decisions</span></div>
+  </div>
+  <section class="field" id="field"></section>
+  <section class="panel">
+    <h2>Battle Log · decisions on 0G</h2>
+    <div class="scroll" id="log"><div class="log"><span class="tag other">…</span><span>Reading PlantWallet events from 0G Galileo…</span></div></div>
+  </section>
+  <section class="panel">
+    <h2>Rules are code</h2>
+    <div class="grid2" id="proofs"></div>
+  </section>
+  <footer>Open source · <a href="https://github.com/trudransh/Groot">github.com/trudransh/Groot</a> · ETHGlobal Mumbai 2026 · Sepolia ENS v2 + 0G Galileo + 0G Router</footer>
+</main>
+<div class="toast" id="toast"></div>
+<script type="module">
+import { createPublicClient, http, parseAbiItem, formatUnits } from 'https://esm.sh/viem@2.57.16'
+import { sepolia } from 'https://esm.sh/viem@2.57.16/chains'
+
+const params = new URLSearchParams(location.search)
+const FOREST = params.get('forest') || 'vantaraa.eth'
+const AGENT = (params.get('agent') || '').replace(/\/+$/, '')
+const SEPOLIA_RPC = 'https://ethereum-sepolia-rpc.publicnode.com'
+const USDC = '0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238'
+const SEPOLIA_COIN = 0x80000000n | 11155111n
+const ZG = {
+  16602: { rpc: 'https://evmrpc-testnet.0g.ai', explorer: 'https://chainscan-galileo.0g.ai', name: '0G Galileo' },
+  16661: { rpc: 'https://evmrpc.0g.ai', explorer: 'https://chainscan.0g.ai', name: '0G Mainnet' },
+}
+const PROOFS = {
+  rejected: '0x701428587ccedded8bbeb284278d9007ae84674681b1c198d30dce054918d702',
+  signal: '0x22ba994d210750095d5c0f2b97d935744ec08ab4fa165116315d3278c705a7d2',
+  safeStopRoot: '0xb7aef90450a5ef47f44ced0ec70219cfb8d1312e0def9a943cdcac1d850368b7',
+}
+
+const ens = createPublicClient({ chain: sepolia, transport: http(SEPOLIA_RPC) })
+const $ = (id) => document.getElementById(id)
+const short = (h, a = 6, b = 4) => (h && h.length > a + b + 2 ? `${h.slice(0, a)}…${h.slice(-b)}` : h || '—')
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c])
+const sepTx = (h) => `https://sepolia.etherscan.io/tx/${h}`
+const sepAddr = (a) => `https://sepolia.etherscan.io/address/${a}`
+$('forest-link').textContent = FOREST
+$('forest-link').href = `https://sepolia.app.ens.domains/${FOREST}`
+
+function toast(msg, ms = 4200) {
+  const t = $('toast')
+  t.innerHTML = msg
+  t.classList.add('on')
+  clearTimeout(toast.t)
+  toast.t = setTimeout(() => t.classList.remove('on'), ms)
+}
+
+const span = (cls, s) => `<span class="${cls}">${esc(s)}</span>`
+
+function grootArt(thirsty) {
+  const face = thirsty ? '( x _ x )' : '( ^ ‿ ^ )'
+  return [
+    `            ${span('l3', '.-~~~~~~~~-.')}`,
+    `       ${span('l1', '.-~~')}${span('l3', '  @  %  @  ')}${span('l1', '~~-.')}`,
+    `     ${span('l2', '.~')}${span('l1', '  @%@  ')}${span('fl', '*')}${span('l1', '  %@%  @  ')}${span('l2', '~.')}`,
+    `    ${span('l1', '(')}${span('l2', ' %@  ')}${span('l1', '@%@')}${span('fc', face)}${span('l1', '@%@ ')}${span('l2', ' %)')}`,
+    `     ${span('l2', '(')}${span('l1', '  @%@  %@%  ')}${span('fl', '*')}${span('l1', '  @%@  ')}${span('l2', ')')}`,
+    `      ${span('l2', "'~.")}${span('l1', '_ @%@ __ @%@ _')}${span('l2', ".~'")}`,
+    `          ${span('l2', "'-.")}${span('tk', '\\  ||  /')}${span('l2', ".-'")}`,
+    `               ${span('tk', '\\||/')}`,
+    `               ${span('tk', '|||| ')}`,
+    `               ${span('tk', '||||')}`,
+    `      ${span('gr', ',,')}${span('fl', '*')}${span('gr', ',,,')}${span('tk', '/|||\\')}${span('gr', ',,,')}${span('fl', '*')}${span('gr', ',,')}`,
+  ].join('\n')
+}
+
+function saplingArt(thirsty) {
+  const face = thirsty ? '(;-_-)' : '(•ᴗ•)'
+  return [
+    `        ${span('l3', '\\  |  /')}`,
+    `      ${span('l1', '.-')}${span('l3', '\\ | /')}${span('l1', '-.')}`,
+    `     ${span('l2', '(')}${span('l1', ' ~ ')}${span('fc', face)}${span('l1', ' ~')}${span('l2', ')')}`,
+    `      ${span('l2', "'-.")}${span('l1', '_v_')}${span('l2', ".-'")}`,
+    `         ${span('tk', '| |')}`,
+    `     ${span('gr', ',,')}${span('fl', '*')}${span('gr', ',')}${span('tk', '/| |\\')}${span('gr', ',')}${span('fl', '*')}${span('gr', ',,')}`,
+  ].join('\n')
+}
+
+const art = { groot: grootArt, sapling: saplingArt }
+
+async function text(name, key) {
+  try { return (await ens.getEnsText({ name, key })) ?? '' } catch { return '' }
+}
+
+async function addr(name, coinType) {
+  try { return await ens.getEnsAddress({ name, coinType }) } catch { return null }
+}
+
+async function readForest() {
+  const [plantsRaw, chainRaw, contract, description] = await Promise.all([
+    text(FOREST, 'forest.plants'), text(FOREST, 'forest.chain'), text(FOREST, 'forest.contract'), text(FOREST, 'description'),
+  ])
+  const chainId = Number(chainRaw) || 16602
+  const labels = plantsRaw.split(',').map((s) => s.trim()).filter(Boolean)
+  const plants = await Promise.all(labels.map(async (label) => {
+    const name = `${label}.${FOREST}`
+    const [signal, reservoir, persona, stage, mode, species, plantWallet, agent] = await Promise.all([
+      text(FOREST, `signal.${label}`), text(FOREST, `reservoir.${label}`), text(name, 'forest.persona'), text(name, 'forest.stage'),
+      text(name, 'forest.mode'), text(name, 'forest.species'), addr(name, 0x80000000n | BigInt(chainId)), addr(name, SEPOLIA_COIN),
+    ])
+    return { label, name, signal, reservoir, persona, stage, mode, species, plantWallet, agent }
+  }))
+  return { chainId, contract, description, plants }
+}
+
+async function usdcOf(address) {
+  if (!address) return null
+  try {
+    const raw = await ens.readContract({ address: USDC, abi: [parseAbiItem('function balanceOf(address) view returns (uint256)')], functionName: 'balanceOf', args: [address] })
+    return Number(formatUnits(raw, 6))
+  } catch { return null }
+}
+
+const ACTIONS = ['water', 'wait', 'ask_help', 'give']
+const waterEvent = parseAbiItem('event WaterOrdered(uint256 indexed orderId, uint32 ml, uint256 costWei, string requestId, bytes32 root)')
+const decisionEvent = parseAbiItem('event DecisionLogged(uint8 action, string requestId, bytes32 root)')
+
+async function history(zg, plant) {
+  if (!plant.plantWallet) return []
+  const client = createPublicClient({ transport: http(zg.rpc) })
+  const latest = await client.getBlockNumber()
+  const step = 50000n
+  const out = []
+  for (let i = 0n; i < 6n; i++) {
+    const toBlock = latest - i * step
+    const fromBlock = toBlock - step + 1n
+    if (toBlock < 0n) break
+    try {
+      const logs = await client.getLogs({ address: plant.plantWallet, events: [waterEvent, decisionEvent], fromBlock: fromBlock < 0n ? 0n : fromBlock, toBlock })
+      for (const l of logs) out.push({ plant: plant.label, kind: l.eventName, args: l.args, tx: l.transactionHash, block: l.blockNumber })
+    } catch { break }
+  }
+  return out
+}
+
+function renderPlant(p, usdc) {
+  const thirsty = p.signal === '1'
+  const status = p.signal === '1' ? ['thirsty', 'THIRSTY!'] : p.signal === '0' ? ['ok', 'HAPPY'] : ['unknown', 'NO SIGNAL']
+  const level = p.reservoir === '' ? null : Math.max(0, Math.min(1000, Number(p.reservoir) || 0))
+  const draw = art[p.label] || (p.stage === 'sapling' ? saplingArt : grootArt)
+  const stage = (p.stage || 'plant').toUpperCase()
+  const el = document.createElement('article')
+  el.className = `base ${p.label} ${thirsty ? 'thirsty' : ''}`
+  el.innerHTML = `
+    <div class="plate">
+      <div><div class="name">${esc(p.label.charAt(0).toUpperCase() + p.label.slice(1))}</div><span class="ens">${esc(p.name)}</span></div>
+      <div class="lvl"><span>${esc(stage.slice(0, 8))}</span></div>
+    </div>
+    <div class="status ${status[0]}">${status[1]}</div>
+    <div class="stage"><pre class="tree" aria-label="${esc(p.label)} as ASCII art">${draw(thirsty)}</pre><div class="drops"></div></div>
+    <div class="stats">
+      <div class="meter" title="reservoir.${esc(p.label)} on ${esc(FOREST)}"><i style="width:${level === null ? 0 : level / 10}%"></i><b>${level === null ? 'Reservoir: not set' : `Reservoir ${level} / 1000 ml`}</b></div>
+      ${p.persona ? `<div class="persona">“${esc(p.persona)}”</div>` : ''}
+      <div class="chips">
+        <span class="chip">🪙 ${usdc === null ? '…' : usdc.toFixed(2)} USDC</span>
+        <span class="chip">🌱 ${esc((p.mode || 'unknown').toUpperCase())}</span>
+        ${p.agent ? `<span class="chip">🧠 agent <a href="${sepAddr(p.agent)}" target="_blank" rel="noopener">${short(p.agent)}</a></span>` : ''}
+        ${p.plantWallet ? `<span class="chip">🏦 PlantWallet <a href="${p.zg.explorer}/address/${p.plantWallet}" target="_blank" rel="noopener">${short(p.plantWallet)}</a></span>` : ''}
+        <span class="chip">📡 signal.${esc(p.label)} = ${esc(p.signal || '—')}</span>
+      </div>
+      ${AGENT ? `<button class="btn blue" data-ask="${esc(p.label)}">💧 Ask ${esc(p.label)} to check its water</button>` : ''}
+    </div>`
+  return el
+}
+
+function rain(base) {
+  const box = base.querySelector('.drops')
+  for (let i = 0; i < 18; i++) {
+    const d = document.createElement('span')
+    d.className = 'drop'
+    d.textContent = i % 3 ? '|' : '💧'
+    d.style.left = `${10 + Math.random() * 80}%`
+    d.style.animationDelay = `${Math.random() * 0.9}s`
+    box.appendChild(d)
+    setTimeout(() => d.remove(), 2600)
+  }
+}
+
+async function ask(btn, label) {
+  btn.disabled = true
+  const old = btn.textContent
+  btn.textContent = '🧠 0G is deciding…'
+  try {
+    const res = await fetch(`${AGENT}/public/checkpoint/${encodeURIComponent(label)}`, { method: 'POST' })
+    const r = await res.json()
+    if (!res.ok) throw new Error(r.error || `HTTP ${res.status}`)
+    const base = btn.closest('.base')
+    if (r.action === 'water' && r.txHash) rain(base)
+    toast(`<b>${esc(label)}</b> decided <b>${esc(r.action)}</b> (${esc(r.status)}) · request ${esc(short(r.requestId, 8, 4))}${r.txHash ? ` · <a style="color:#ffd23f" target="_blank" rel="noopener" href="${r.explorer}/tx/${r.txHash}">tx</a>` : ''}<br><span class="muted">${esc(r.reason || '')}</span>`, 9000)
+    setTimeout(load, 4000)
+  } catch (e) {
+    toast(`Station offline or busy: ${esc(e.message)}. The table pump is only reachable while the team's laptop is on.`)
+  } finally {
+    btn.disabled = false
+    btn.textContent = old
+  }
+}
+
+function renderLog(events, zg) {
+  const log = $('log')
+  if (!events.length) { log.innerHTML = '<div class="log"><span class="tag other">empty</span><span>No decisions logged yet.</span></div>'; return }
+  log.innerHTML = events.sort((a, b) => Number(b.block - a.block)).map((e) => {
+    const water = e.kind === 'WaterOrdered'
+    const action = water ? 'water' : ACTIONS[e.args.action] || `action ${e.args.action}`
+    const cls = action === 'water' ? 'water' : action === 'wait' ? 'wait' : 'other'
+    const what = water ? `ordered <b>${e.args.ml} ml</b>, paid ${formatUnits(e.args.costWei, 18)} 0G` : `logged <b>${esc(action)}</b>`
+    return `<div class="log"><span class="tag ${cls}">${esc(e.plant)} · ${esc(action)}</span><span>${what} · block ${e.block}<br>
+      <span class="mono">0G request ${esc(e.args.requestId || '(none)')}<br>record root ${esc(e.args.root)}</span><br>
+      <a href="${zg.explorer}/tx/${e.tx}" target="_blank" rel="noopener">view tx on ${esc(zg.name)} ↗</a></span></div>`
+  }).join('')
+}
+
+function renderProofs(f, zg) {
+  $('proofs').innerHTML = `
+    <div class="card"><h3>🛡️ A plant cannot write another plant's signal</h3>Groot's agent tried to set <span class="mono">signal.sapling</span>. ENS v2 Enhanced Access Control rejected it.<br><a href="${sepTx(PROOFS.rejected)}" target="_blank" rel="noopener">reverted tx ↗</a></div>
+    <div class="card"><h3>📡 Distress signal on ENS</h3>Each agent may write only <span class="mono">signal.&lt;itself&gt;</span> on ${esc(FOREST)}: 1 thirsty, 0 ok.<br><a href="${sepTx(PROOFS.signal)}" target="_blank" rel="noopener">Sapling raising its signal ↗</a></div>
+    <div class="card"><h3>🧠 Every decision stored on 0G</h3>Each record goes to 0G Storage before any onchain action; <span class="mono">pnpm replay &lt;root&gt;</span> re-runs the rules and must MATCH.</div>
+    <div class="card"><h3>🛑 Safe stop</h3>0G unreachable means wait, no order, pump off. The failure itself is stored:<br><span class="mono">${esc(PROOFS.safeStopRoot)}</span></div>
+    <div class="card"><h3>🌳 Forest contract</h3>${f.contract ? `<a href="${zg.explorer}/address/${f.contract}" target="_blank" rel="noopener">${short(f.contract, 8, 6)} on ${esc(zg.name)} ↗</a>` : 'not set'}<br>found through <span class="mono">forest.contract</span> on ${esc(FOREST)}</div>
+    <div class="card"><h3>💸 Money is USDC on Sepolia</h3>Trees pay each other by ENS name; anyone outside the forest must pass World ID first.</div>`
+}
+
+async function load() {
+  try {
+    const f = await readForest()
+    const zg = ZG[f.chainId] || ZG[16602]
+    f.plants.forEach((p) => (p.zg = zg))
+    const balances = await Promise.all(f.plants.map((p) => usdcOf(p.agent)))
+    const field = $('field')
+    field.innerHTML = ''
+    f.plants.forEach((p, i) => field.appendChild(renderPlant(p, balances[i])))
+    if (!f.plants.length) field.innerHTML = '<div class="panel"><h2>No plants found</h2>forest.plants is empty on this name.</div>'
+    field.querySelectorAll('[data-ask]').forEach((b) => b.addEventListener('click', () => ask(b, b.dataset.ask)))
+    $('usdc-total').textContent = `${balances.reduce((s, b) => s + (b || 0), 0).toFixed(2)} USDC`
+    renderProofs(f, zg)
+    const events = (await Promise.all(f.plants.map((p) => history(zg, p)))).flat()
+    $('orders-total').textContent = `${events.filter((e) => e.kind === 'WaterOrdered').length} water orders`
+    $('decisions-total').textContent = `${events.length} 0G decisions`
+    renderLog(events, zg)
+  } catch (e) {
+    toast(`Could not read the forest: ${esc(e.message)}`)
+  }
+}
+
+load()
+setInterval(load, 60000)
+</script>
+</body>
+</html>
