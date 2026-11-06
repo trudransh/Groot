@@ -8,10 +8,10 @@ Vocabulary follows `GLOSSARY.md`. Decisions behind these shapes are in `docs/adr
 
 | Thing | Value |
 |---|---|
-| Money, decisions, contracts | 0G Galileo testnet, chain ID `16602`, RPC `https://evmrpc-testnet.0g.ai`, explorer `https://chainscan-galileo.0g.ai` |
-| 0G Storage indexer | `https://indexer-storage-testnet-turbo.0g.ai` |
+| Money, decisions, contracts | 0G mainnet, chain ID `16661`, RPC `https://evmrpc.0g.ai`, explorer `https://chainscan.0g.ai` |
+| 0G Storage indexer | `https://indexer-storage-turbo.0g.ai` (UNVERIFIED: confirm in the 0G mainnet docs) |
 | Names | Ethereum Sepolia, ENS v2 (2026-09-15 redeploy) |
-| ENS address record for a plant wallet | ENSIP-11 coin type `2147500250` (`0x80000000 | 16602`) |
+| ENS address record for a plant wallet | ENSIP-11 coin type `2147500309` (`0x80000000 | 16661`) |
 
 Every value above lives in `.env` files, never in code. The app takes only the forest's ENS name and the RPC URLs.
 
@@ -99,7 +99,7 @@ type DecisionRecord = {
 - The frame is uploaded separately and referenced by `frameRoot`.
 - The record's 0G Storage root hash is the `root` passed to every contract call for that checkpoint.
 
-## 6. Contracts (0G testnet, Solidity ^0.8.24, Foundry)
+## 6. Contracts (0G mainnet, Solidity ^0.8.24, Foundry)
 
 ### Forest
 
@@ -180,7 +180,7 @@ On the forest name (`ourforest.eth`):
 | Key | Value |
 |---|---|
 | `forest.contract` | Forest contract address on 0G |
-| `forest.chain` | `16602` |
+| `forest.chain` | `16661` |
 | `forest.plants` | comma-separated labels, e.g. `banyan-01,tulsi-04` (guardian-written; how the app discovers plants) |
 | `forest.supplier` | supplier address |
 
@@ -188,7 +188,7 @@ On each plant name (`<label>.ourforest.eth`), served by its own Permissioned Res
 
 | Key | Writer | Value |
 |---|---|---|
-| addr, coin type `2147500250` | guardian | PlantWallet address on 0G |
+| addr, coin type `2147500309` | guardian | PlantWallet address on 0G |
 | `forest.species` | guardian | e.g. `neem` |
 | `forest.stage` | guardian | `sapling`, `growing` or `mature` |
 | `forest.mode` | guardian | `real` or `simulated` |
@@ -249,7 +249,7 @@ type GuardianAction =
 
 ```yaml
 service_url: http://<agent-service-host>:8787
-rpc_url: https://evmrpc-testnet.0g.ai
+rpc_url: https://evmrpc.0g.ai
 plants:
   - name: banyan-01.ourforest.eth
     pump_gpio: 17

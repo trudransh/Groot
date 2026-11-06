@@ -33,7 +33,7 @@ Register the forest's name on Sepolia under ENS v2, with its own subname registr
   - The guardian holds root roles on it.
   - The plant agent's key gets `ROLE_SET_TEXT` scoped to the `forest.status` and `forest.decision` keys through `grantSetterRoles` with `setText` calldata carrying those keys.
 - **Plant records:**
-  - The wallet is an address record with ENSIP-11 coin type `2147500250` (0G chain 16602).
+  - The wallet is an address record with ENSIP-11 coin type `2147500309` (0G chain 16661).
   - Text keys and writers are fixed in `00-interfaces.md` section 7.
 - **Plant discovery:** the forest root name's `forest.plants` text record lists the plant labels. The guardian writes it when a plant is added. This needs no indexer.
 - **Gas:** agent writes are rate-limited to one per 5 minutes per plant, or on status change.

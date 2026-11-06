@@ -13,7 +13,7 @@ Twenty-four hours, five gates. A gate passes only when its owner shows it workin
 
 | Gate | Time | Passes when | Tickets |
 |---|---|---|---|
-| G0 | Fri 10:00 | Repo cloned by all three; `.env` filled; 0G testnet funds requested; faucet used for every key; hardware state known; mentor messages sent | 01 |
+| G0 | Fri 10:00 | Repo cloned by all three; `.env` filled; mainnet 0G received from the sponsor and split across keys; hardware state known; mentor messages sent | 01 |
 | G1 | Fri 14:00 | **Tracer bullet:** one simulated plant's checkpoint makes a real 0G decision, stores the record on 0G Storage, and logs it on its PlantWallet. The request ID, root and tx show in `GET /forest`. Contracts deployed with tests green | 02, 03 |
 | G2 | Fri 21:00 | Water path and gift path work end to end on simulated plants; forest names resolve from ENS; app shows the forest and the talk feed live; station sends readings (if hardware is ready) | 04, 05, 06, 07, 08 |
 | G3 | Sat 01:00 | Every demo beat in `docs/specs/08-ship.md` runs once: chat refusal, guardian with World ID and the failed path, ENS reject, over-limit reject, safe stop, replay | 09, 10, 11, 12 |

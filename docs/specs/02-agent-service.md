@@ -73,7 +73,7 @@ The service also gives each plant its voice in forest talk and chat, and serves 
     - A 0G timeout becomes `wait` and `SAFE_STOP`.
   - Chat refusal cases.
   - The API shapes.
-- One live smoke test against the real 0G testnet: one decision, one record, root printed. This is the G1 gate.
+- One live smoke test against the real 0G mainnet: one decision, one record, root printed. This is the G1 gate.
 
 ## Out of Scope
 

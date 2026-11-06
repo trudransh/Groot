@@ -21,9 +21,9 @@ Current pass/fail state per gate is in `docs/STATUS.md`. Env vars: copy each fol
 
 ## Architecture
 
-Decision pipeline (one plant checkpoint): `PlantReading` (station or simulator) -> agent service asks 0G Compute for a `Decision` JSON -> `agent/src/rules.ts` applies hard rules (can only make a decision safer, e.g. `low_confidence`, `invalid_decision`, `zero_g_timeout` -> `SAFE_STOP`, `min_water_gap`) -> record stored on 0G Storage -> only then onchain action via the plant's PlantWallet contract (0G Galileo, chain 16602). Pump runs only after a confirmed paid order (ADR 0004).
+Decision pipeline (one plant checkpoint): `PlantReading` (station or simulator) -> agent service asks 0G Compute for a `Decision` JSON -> `agent/src/rules.ts` applies hard rules (can only make a decision safer, e.g. `low_confidence`, `invalid_decision`, `zero_g_timeout` -> `SAFE_STOP`, `min_water_gap`) -> record stored on 0G Storage -> only then onchain action via the plant's PlantWallet contract (0G mainnet, chain 16661). Pump runs only after a confirmed paid order (ADR 0004).
 
-- Money, decisions, contracts live on 0G Galileo; names (ENS v2) live on Sepolia (ADR 0003). Addresses come from ENS or `contracts/deployments/16602.json`, never source.
+- Money, decisions, contracts live on 0G mainnet; names (ENS v2) live on Sepolia (ADR 0003). Addresses come from ENS or `contracts/deployments/16661.json`, never source.
 - `agent/src/`: `types.ts` mirrors `docs/specs/00-interfaces.md`; `decider/` (0G call + parse), `voice/` (plant talk, falls back to templates), `personas.ts`, `sim/` (simulated plants + replay), `guardian/` (World ID).
 - `agent/scenarios/demo.json` drives the scripted demo beats; `episodes/` holds replayable run logs.
 - `docs/specs/00-interfaces.md` is the cross-workstream contract: change it first, then code. Specs `01`-`09` per workstream, decisions in `docs/adr/`, tickets in `.scratch/plant-forest/issues/`, gates in `docs/RUN_SHEET.md`.
