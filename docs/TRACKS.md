@@ -34,9 +34,9 @@ Must-shows: subname registry, Enhanced Access Control, Permissioned Resolver at 
 - [x] E5. Groot reads the forest and distress signals from ENS (no hard-coded plants)
 - [ ] E6. Agents write their own signal automatically when thirsty and when satisfied (via 0G5/0G6). Owner: R + D
 - [ ] E7. Sapling sees `signal.groot=1` and helps Groot (demo beat). Owner: D
-- [ ] E8. Plant records: `avatar`, `description`, `forest.persona` on both names. Owner: R
-- [ ] E9. ADR 0005 and spec 05 updated to one resolver with a key per plant. Owner: R
-- [ ] E10. `docs/sponsors/ENS.md` filled with names, resolver, roles, tx links for the signal and the rejected write. Owner: R
+- [x] E8. Plant records: `description`, `url`, persona, species, stage, mode on both names, forest contract and chain on the forest name (`pnpm describe`); no avatar image yet. Owner: R
+- [x] E9. ADR 0005 and spec 05 updated to one resolver with a key per plant. Owner: R
+- [x] E10. `docs/sponsors/ENS.md` filled with names, resolver, roles, tx links for the signal and the rejected write. Owner: R
 
 ## World ID
 
