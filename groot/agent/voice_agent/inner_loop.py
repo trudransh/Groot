@@ -186,10 +186,17 @@ def _sleep_minutes(value: object) -> float:
 
 
 class InnerLoop:
-    def __init__(self, room: rtc.Room, is_busy: Callable[[], bool], on_change: Callable[[], Awaitable[None]]) -> None:
+    def __init__(
+        self,
+        room: rtc.Room,
+        is_busy: Callable[[], bool],
+        on_change: Callable[[], Awaitable[None]],
+        on_plan_change: Callable[[], Awaitable[None]] | None = None,
+    ) -> None:
         self.room = room
         self.is_busy = is_busy
         self.on_change = on_change
+        self.on_plan_change = on_plan_change or on_change
         self.client = zero_g.client()
         self.model = zero_g.config().model
         self._poke = asyncio.Event()
@@ -362,7 +369,7 @@ class InnerLoop:
         if name == "signal_distress":
             result = await distress.signal_distress(args.get("on") is True, str(args.get("reason", "")))
             await self._note("action", result)
-            await self.on_change()
+            await self.on_plan_change()
             return result
         if name == "answer_distress":
             try:
@@ -371,6 +378,6 @@ class InnerLoop:
                 reward = 0.0
             result = await distress.answer(str(args.get("plant", "")), args.get("help") is True, reward, str(args.get("reason", "")))
             await self._note("action", result)
-            await self.on_change()
+            await self.on_plan_change()
             return result
         return f"{name} is not available while you are alone; deals with people happen in a conversation. Use one of: {', '.join(_TOOL_NAMES)}."

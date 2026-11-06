@@ -266,12 +266,13 @@ async def entrypoint(ctx: JobContext):
         return build_prompt(_memory(), await _forest())
 
     agent = Assistant(system_prompt, prompt_source=fresh_prompt)
-    inner = InnerLoop(ctx.room, is_busy=lambda: not session.userdata.dormant, on_change=publish_status)
 
     async def refresh_after_distress() -> None:
         if not session.userdata.dormant:
             await agent.refresh_instructions()
         await publish_status()
+
+    inner = InnerLoop(ctx.room, is_busy=lambda: not session.userdata.dormant, on_change=publish_status, on_plan_change=refresh_after_distress)
 
     @session.on("user_state_changed")
     def _on_user_state_changed(ev):

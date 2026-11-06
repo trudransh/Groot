@@ -140,6 +140,7 @@ def test_inner_loop_can_answer_distress(plant, monkeypatch):
 
     loop._note = note
     loop.on_change = on_change
+    loop.on_plan_change = on_change
     reply = asyncio.run(loop._call("answer_distress", {"plant": "sapling", "help": True, "reward_usdc": 1, "reason": "plenty"}))
     assert "Committed" in reply and notes
     assert inner_loop.decision_label("answer_distress", {"plant": "sapling", "help": True}) == "Decided to help sapling"
@@ -345,3 +346,26 @@ def test_tick_refreshes_when_own_signal_changes(sapling, monkeypatch):
     mine["thirsty"] = False
     asyncio.run(distress.tick(SAPLING, pokes.append, refresh))
     assert refreshes == [1, 1] and distress.own_signal() is False
+
+
+def test_inner_loop_decision_refreshes_the_live_chat(plant):
+    from voice_agent import inner_loop
+
+    distress.sync([tree("sapling", thirsty=True)], ME)
+    loop = inner_loop.InnerLoop.__new__(inner_loop.InnerLoop)
+    plans = []
+
+    async def note(kind, text, **extra):
+        pass
+
+    async def on_change():
+        pass
+
+    async def on_plan_change():
+        plans.append(1)
+
+    loop._note = note
+    loop.on_change = on_change
+    loop.on_plan_change = on_plan_change
+    asyncio.run(loop._call("answer_distress", {"plant": "sapling", "help": True, "reward_usdc": 1, "reason": "spare"}))
+    assert plans == [1]
