@@ -1,4 +1,4 @@
-# Plant forest (working name)
+# Groot
 
 In nature, big trees take water and nutrients from the small plants around them. Our plants do the opposite.
 
