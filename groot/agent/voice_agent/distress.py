@@ -209,6 +209,7 @@ async def tick(own_name: str | None, poke: Callable[[str], None], refresh: Calla
     events = sync(trees, own_name)
     notes = [f"{n} just sent a distress signal: it needs water and has no pump. Decide now with answer_distress whether to help or ignore it." for n in events["raised"]]
     notes += [f"{n} turned its distress signal off." for n in events["cleared"]]
+    notes += await _reconsider()
     if notes:
         poke(" ".join(notes))
         await refresh()
@@ -250,3 +251,33 @@ async def signal_distress(on: bool, reason: str) -> str:
     d["own"] = on
     _save(d)
     return f"Signal {'on' if on else 'off'}: {'the forest can see you need water' if on else 'you told the forest you are fine'} ({reason.strip() or 'no reason'}). {r['explorer']}"
+
+
+async def _can_afford() -> bool:
+    try:
+        level = await water.level()
+        balance = float(await _usdc_balance())
+    except Exception:
+        return False
+    return level is not None and level >= MIN_SPARE_RESERVOIR_ML and balance > standard_rate()
+
+
+async def _reconsider() -> list[str]:
+    d = _state()
+    ignored = [n for n in d["seen"] if n in d["ignored"]]
+    if not ignored or d["help"]:
+        if d.get("affordable"):
+            d["affordable"] = False
+            _save(d)
+        return []
+    affordable = await _can_afford()
+    was = bool(d.get("affordable"))
+    if affordable != was:
+        d["affordable"] = affordable
+        _save(d)
+    if not affordable or was:
+        return []
+    return [
+        f"You now have water and money to spare. Reconsider the distress call you ignored from {', '.join(ignored)}: "
+        "call answer_distress again to help, or keep ignoring it."
+    ]

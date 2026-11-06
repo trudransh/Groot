@@ -288,3 +288,33 @@ def test_status_reports_pump_and_own_signal(sapling):
     assert s["hasPump"] is False and s["distressOn"] is False
     asyncio.run(distress.signal_distress(True, "dry"))
     assert plant_state.status()["distressOn"] is True
+
+
+def test_tick_asks_to_reconsider_once_when_help_becomes_affordable(plant, monkeypatch):
+    from voice_agent import forest
+
+    async def fake_fetch():
+        return [tree("sapling", thirsty=True)]
+
+    monkeypatch.setattr(forest, "fetch", fake_fetch)
+    pokes, refreshes = [], []
+
+    async def refresh():
+        refreshes.append(1)
+
+    plant["reservoir"] = 40
+    asyncio.run(distress.tick(ME, pokes.append, refresh))
+    asyncio.run(distress.answer(SAPLING, False, 0, "only 40 ml"))
+    pokes.clear()
+    asyncio.run(distress.tick(ME, pokes.append, refresh))
+    assert pokes == []
+    plant["reservoir"] = 600
+    asyncio.run(distress.tick(ME, pokes.append, refresh))
+    assert len(pokes) == 1 and "reconsider" in pokes[0].lower() and SAPLING in pokes[0]
+    asyncio.run(distress.tick(ME, pokes.append, refresh))
+    assert len(pokes) == 1
+    plant["reservoir"] = 40
+    asyncio.run(distress.tick(ME, pokes.append, refresh))
+    plant["reservoir"] = 600
+    asyncio.run(distress.tick(ME, pokes.append, refresh))
+    assert len(pokes) == 2
