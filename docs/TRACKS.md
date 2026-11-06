@@ -4,8 +4,8 @@ Submission: form in by Sat 7 Nov 07:00 IST (closes 09:00). Owners: R = Rudransh,
 
 ## Blockers for everything
 
-- [ ] B1. 0G mainnet funds on Groot `0x02871e1b819Dd5ce394337d0A2E8C19686887ba1` (about 0.2 0G) and Sapling `0xA11E25e4135739027fdC6E62B5e183769821829F` (about 0.1 0G). Owner: R
-- [ ] B2. Team decision: USDC stays on Sepolia; 0G mainnet carries decision records and the decision log. Owner: all
+- [x] B1. Switched Storage and contracts to 0G Galileo testnet, funded from the guardian; Compute stays on the mainnet Router. Was: 0G mainnet funds on Groot `0x02871e1b819Dd5ce394337d0A2E8C19686887ba1` (about 0.2 0G) and Sapling `0xA11E25e4135739027fdC6E62B5e183769821829F` (about 0.1 0G). Owner: R
+- [x] B2. Team decision: USDC stays on Sepolia; 0G (Galileo) carries decision records and the decision log. Owner: all
 - [ ] B3. Merge `dhairya` into `main` once T-D1 and T-D2 below land. Owner: D
 
 ## 0G (Physical AI + Wildcard)
@@ -14,9 +14,9 @@ Must-shows: 0G call in the decision loop, a record per decision on 0G Storage wi
 
 - [x] 0G1. Decisions come from the 0G Router with a request ID (TS checkpoint and Groot's inner loop)
 - [x] 0G2. Storage upload code (`agent/src/live/storage.ts`), reaches the submit transaction
-- [ ] 0G3. First real storage root on mainnet (needs B1). Owner: R
-- [ ] 0G4. Deploy on 0G mainnet: `Forest` + one `PlantWallet` per plant, or a minimal decision log, write `contracts/deployments/16661.json`. Owner: Ra
-- [ ] 0G5. `/water` and `/signal` endpoints in the TS agent: record to Storage, `logDecision`/`orderWater` on 0G, pump, ENS signal. Owner: R
+- [x] 0G3. First real storage root on mainnet (needs B1). Owner: R
+- [x] 0G4. Deploy on 0G mainnet: `Forest` + one `PlantWallet` per plant, or a minimal decision log, write `contracts/deployments/16661.json`. Owner: Ra
+- [x] 0G5. `/water` and `/signal` endpoints in the TS agent: record to Storage, `logDecision`/`orderWater` on 0G, pump, ENS signal. Owner: R
 - [ ] 0G6. Groot's `water_myself` calls `/water` instead of the ESP32 directly, passing its 0G request ID. Owner: D
 - [ ] 0G7. Safe stop shown live: 0G unreachable means no water and status `safe_stop`. Owner: R
 - [ ] 0G8. Replay: run a stored record again from its root (command in README is enough). Owner: R
