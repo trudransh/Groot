@@ -70,13 +70,13 @@ It is a physical thing. Real plants sit on the table, a Raspberry Pi watches the
 - An integration debrief: time to first success, friction, missing capability, top improvement.
 
 **Facts checked on 6 Nov 2026**
-- 0G Galileo testnet: chain ID 16602, RPC `https://evmrpc-testnet.0g.ai`, explorer `https://chainscan-galileo.0g.ai`, faucet `https://faucet.0g.ai` at 0.1 0G per wallet per day. [0G docs](https://docs.0g.ai/developer-hub/testnet/testnet-overview)
+- 0G mainnet: chain ID 16661, RPC `https://evmrpc.0g.ai`, explorer `https://chainscan.0g.ai`. The team receives mainnet 0G from the sponsor, so there is no faucet. (Galileo testnet, 16602, was dropped: its Compute providers were down.) [0G docs](https://docs.0g.ai/developer-hub/mainnet/mainnet-overview)
 - 0G Compute: package `@0gfoundation/0g-compute-ts-sdk`; `createZGComputeNetworkBroker`; ledger needs a 3 0G minimum deposit and each provider at least 1 0G; request ID from the `ZG-Res-Key` header or `data.id`; `processResponse` verifies the provider's signature. Only LLM chat services are documented; vision is not confirmed. [0G inference docs](https://docs.0g.ai/developer-hub/building-on-0g/compute-network/inference)
-- 0G Storage: package `@0gfoundation/0g-storage-ts-sdk`; testnet indexer `https://indexer-storage-testnet-turbo.0g.ai`; `indexer.upload(file, rpc, signer)` returns `{ rootHash, txHash }`. [0G storage docs](https://docs.0g.ai/developer-hub/building-on-0g/storage/sdk)
+- 0G Storage: package `@0gfoundation/0g-storage-ts-sdk`; mainnet indexer `https://indexer-storage-turbo.0g.ai` (UNVERIFIED: confirm in the 0G mainnet docs); `indexer.upload(file, rpc, signer)` returns `{ rootHash, txHash }`. [0G storage docs](https://docs.0g.ai/developer-hub/building-on-0g/storage/sdk)
 - ENS v2 is deployed on Sepolia (2026-09-15 redeploy); ensjs support for it is in an open PR. [ENS v2 overview](https://docs.ens.domains/ensv2/overview/), [ensjs PR 380](https://github.com/ensdomains/ensjs/pull/380)
 - ENS v2 Permissioned Resolver roles can be scoped to one text key, but not to one name: "a role holder can write the covered records on every name served by the resolver instance". Per-name permissions need one resolver instance per name. [Permissioned Resolver](https://docs.ens.domains/ensv2/permissioned-resolver)
 
-**Money budget.** The faucet gives 0.1 0G per wallet per day, while the 0G Compute ledger needs 3 0G plus 1 0G per provider. Testnet 0G has to come from 0G's team on Discord. This blocks the decision loop, so it is the first thing to ask tonight.
+**Money budget.** Mainnet 0G is real value and comes from the sponsor. The 0G Compute ledger needs 3 0G plus 1 0G per provider, and every Storage upload and onchain call costs gas, so the first job is to split the allotment across keys and log spend per checkpoint.
 
 ## 7. Approaches considered
 
@@ -116,7 +116,7 @@ The team splits these workstreams among itself in the morning. Each one owns who
 | WS-STATION | Raspberry Pi with a camera, a soil-moisture sensor and a pump per real plant. Reports readings, watches for paid water orders, runs the pump only for a paid order, stops safely |
 | WS-AGENT | One agent per plant. Runs checkpoints, calls 0G Compute, writes decision records to 0G Storage, signs the plant's transactions, serves the app's API and live feed |
 | WS-SIM | Simulated plants and replay mode, driving the same agent loop as real plants |
-| WS-CONTRACTS | `PlantWallet` per plant and a `Forest` registry on the 0G testnet: rules, help requests, the supplier, water orders |
+| WS-CONTRACTS | `PlantWallet` per plant and a `Forest` registry on 0G mainnet: rules, help requests, the supplier, water orders |
 | WS-ENS | `ourforest.eth` on Sepolia with a subname per plant, one Permissioned Resolver per plant, scoped roles, deploy scripts |
 | WS-GUARDIAN | World ID check in the backend before every guardian action, and the guardian panel |
 | WS-APP | Forest view, plant page, forest talk feed, chat |
@@ -164,7 +164,7 @@ Anyone can send money to a plant by its ENS name, because the name resolves to t
 - `ourforest.eth` is registered on Sepolia under ENS v2, with its own subname registry.
 - Each plant is a subname, for example `banyan-01.ourforest.eth`, served by **its own Permissioned Resolver instance**, because per-name permissions need one resolver per name.
 - Records on each plant name:
-  - The 0G-chain address of its `PlantWallet`, as an address record for chain 16602 (ENSIP-11 coin type).
+  - The 0G-chain address of its `PlantWallet`, as an address record for chain 16661 (ENSIP-11 coin type).
   - Text records for species, stage, persona, and the latest decision root.
   - Agent records per ENSIP-25 and ENSIP-26, if they fit (to confirm with ENS).
 - Roles:
@@ -211,7 +211,7 @@ Anyone can send money to a plant by its ENS name, because the name resolves to t
 
 My call: the hosted app stays up reading the chain and ENS, with replay available.
 
-Simulated plants keep running with real 0G calls only during the judging window, under a fixed budget of checkpoints per hour, so the testnet 0G we ask for covers:
+Simulated plants keep running with real 0G calls only during the judging window, under a fixed budget of checkpoints per hour, so the mainnet 0G we receive covers:
 - the build;
 - the stage demo;
 - about 48 hours of judging.
@@ -219,7 +219,7 @@ Simulated plants keep running with real 0G calls only during the judging window,
 ## 9. Left for later (not in this build)
 
 - 0G iAI track: each plant pays for its own thinking with daily credits on 0G Private Computer, through Privy, with the demo on localhost:3000. If the team adds it, it goes into the agent service as a second decision provider.
-- Per-plant keys held on the station, nutrients, multiple forests, mainnet.
+- Per-plant keys held on the station, nutrients, multiple forests.
 
 ## 10. Calls I made that the team should check
 
@@ -247,8 +247,8 @@ Simulated plants keep running with real 0G calls only during the judging window,
 
 | # | Question | Ask | If no |
 |---|---|---|---|
-| 1 | Can 0G give us enough testnet 0G for the Compute ledger (3 0G plus 1 per provider)? | 0G Discord | Nothing in the loop works; escalate first |
-| 2 | Does any 0G Compute testnet provider take image input? | 0G | Send soil reading plus simple image features as text, and store the frame on 0G Storage as evidence |
+| 1 | Can 0G give us enough mainnet 0G for the Compute ledger (3 0G plus 1 per provider)? | 0G Discord | Nothing in the loop works; escalate first |
+| 2 | Does any 0G Compute provider take image input? | 0G | Send soil reading plus simple image features as text, and store the frame on 0G Storage as evidence |
 | 3 | Are two real plants plus simulated plants with real 0G calls, plus replay, accepted as the Physical AI simulation? | 0G | Add a scripted sim scenario the judges can run from the repo |
 | 4 | Is the 2026-09-15 Sepolia ENS v2 deployment the one to use, and is there working tooling to deploy a subregistry and one Permissioned Resolver per name? | ENS | Write the deploy scripts directly against contracts-v2 |
 | 5 | Which record keys do ENSIP-25 and ENSIP-26 expect for agents? | ENS | Plain text records with a `forest.` prefix |

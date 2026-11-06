@@ -6,7 +6,7 @@ If sharing were only a promise in the agents' prompts, a confused or manipulated
 
 ## Solution
 
-Two contracts on the 0G testnet.
+Two contracts on 0G mainnet.
 - **`Forest`** holds the rules (water price, share limit, water caps), the list of registered plant wallets, the supplier, and the help requests.
 - **`PlantWallet`** is one per plant. It holds that plant's money and lets only that plant's agent order water, ask for help, give and log decisions, each within the forest rules.
 
@@ -33,8 +33,8 @@ Every action carries the 0G request ID and the decision record's root, so each o
 
 ## Implementation Decisions
 
-- Solidity ^0.8.24 with Foundry, deployed to the 0G Galileo testnet (chain 16602). The interfaces, events, errors and default values are fixed in `00-interfaces.md` section 6.
-- Native 0G testnet token as the money. No ERC-20 in this build.
+- Solidity ^0.8.24 with Foundry, deployed to the 0G mainnet (chain 16661). The interfaces, events, errors and default values are fixed in `00-interfaces.md` section 6.
+- Native 0G token (mainnet, real value) as the money. No ERC-20 in this build.
 - A `PlantWallet` is deployed per plant by a deploy script, then registered with `Forest.registerPlant` by the guardian executor.
 - **Share window:**
   - A fixed 24-hour window starts at the first gift after the previous window ended.
@@ -43,7 +43,7 @@ Every action carries the 0G request ID and the decision record's root, so each o
 - **Water cap:** a rolling day measured with the same fixed-window method, on millilitres.
 - `orderWater` pays the supplier directly in the same call. Money leaves the plant as the order is placed. Delivery is reported offchain by the station.
 - `guardianExecutor` is one address (the backend's guardian key), the same for the forest and every plant wallet. The World ID check happens before this key signs (spec 06).
-- No upgradeability, no proxies. A redeploy is cheap on testnet.
+- No upgradeability, no proxies. A redeploy costs mainnet gas and changes every address, so deploy once with small caps.
 
 ## Testing Decisions
 
@@ -63,7 +63,7 @@ Every action carries the 0G request ID and the decision record's root, so each o
 
 ## Out of Scope
 
-- Physical delivery proof onchain, multiple forests, ERC-20 tokens, mainnet.
+- Physical delivery proof onchain, multiple forests, ERC-20 tokens.
 - Supplier logic beyond receiving payment.
 
 ## Further Notes

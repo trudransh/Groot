@@ -29,9 +29,9 @@ The approved design behind all of it is `docs/superpowers/specs/2026-11-06-plant
 
 - **Tests first.** Write the failing test, watch it fail, then write the code.
 - **Real 0G, always.** Every decision comes from a real 0G Compute call and is stored on 0G Storage before any onchain action. Simulated plants and replay are labelled everywhere they appear.
-- **Addresses come from ENS** or from `contracts/deployments/16602.json`, never from source code.
+- **Addresses come from ENS** or from `contracts/deployments/16661.json`, never from source code.
 - **Secrets live in `.env` files.** They are gitignored and never printed.
-- **Comments are single-line,** and only where the code cannot say it.
+- **No code comments, ever.** Not single-line, not doc blocks, not TODOs. Names and structure carry the meaning; anything else goes in the spec, the ticket or the commit message.
 - **Humans commit,** one feature or fix per commit, under their own git identity. Commit messages, PRs and files carry no AI attribution lines.
 - **Disclose AI work.** Record what was generated, hand-written and reviewed in `AI_USAGE.md` as you go.
 - **Stay in your lane.** Edit files in your workstream's folder. A change another workstream needs goes into its ticket under `## Comments`.

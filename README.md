@@ -53,8 +53,8 @@ The repo is already configured for mattpocock-skills (`docs/agents/`), so `/setu
 
 | What | Network | Address or name |
 |---|---|---|
-| Forest | 0G Galileo (16602) | |
-| Plant wallets | 0G Galileo (16602) | |
+| Forest | 0G mainnet (16661) | |
+| Plant wallets | 0G mainnet (16661) | |
 | Forest name | Sepolia ENS v2 | `ourforest.eth` (placeholder) |
 
 ## Proof

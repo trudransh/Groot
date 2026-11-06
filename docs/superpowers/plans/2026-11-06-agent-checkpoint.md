@@ -18,8 +18,8 @@
 - Every type crossing a boundary is copied exactly from `00-interfaces.md`, into `agent/src/types.ts`.
 - 0G request timeout 8 s. Minimum confidence 0.6. `MIN_WATER_GAP_S` default 600. `CHECKPOINT_SECONDS` default 30.
 - No onchain call without a stored record root.
-- All URLs, keys and addresses come from `agent/.env`; plant names and wallets come from ENS once ticket 06 lands. Until then, from `contracts/deployments/16602.json`.
-- Single-line comments only, and only where needed.
+- All URLs, keys and addresses come from `agent/.env`; plant names and wallets come from ENS once ticket 06 lands. Until then, from `contracts/deployments/16661.json`.
+- No code comments, ever (see AGENTS.md).
 - One feature per commit, under the human's own name, no AI co-author lines.
 
 ## Review Focus
@@ -116,7 +116,7 @@ type CheckpointContext = { plantName: string; plantWallet: `0x${string}`; readin
   - `ZeroGRecordStore`: `MemData` of the JSON, `merkleTree()`, `indexer.upload(file, RPC_URL, signer)`, return `rootHash`.
   - The viem `PlantWalletClient`.
   - `runCheckpoint`, in the fixed order from `02-agent-service.md`.
-- [ ] **Step 4: Run** the tests (PASS), then `pnpm tsx scripts/smoke-checkpoint.ts banyan-01`. Expected: prints a request ID, a root that opens on the 0G storage explorer, and a tx hash that opens on `https://chainscan-galileo.0g.ai`.
+- [ ] **Step 4: Run** the tests (PASS), then `pnpm tsx scripts/smoke-checkpoint.ts banyan-01`. Expected: prints a request ID, a root that opens on the 0G storage explorer, and a tx hash that opens on `https://chainscan.0g.ai`.
 - [ ] **Step 5: Commit** `feat(agent): checkpoint pipeline on 0G`.
 
 ### Task 5: Simulated plant, scheduler and API
