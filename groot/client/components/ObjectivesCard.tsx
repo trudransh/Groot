@@ -16,6 +16,9 @@ export interface PlantStatus {
   walletAddress: string | null;
   ensName: string | null;
   balances?: { ETH: string; USDC: string };
+  reservoirMl?: number | null;
+  reservoirMaxMl?: number;
+  forest?: { name: string; reservoirMl: number | null; thirsty: boolean }[];
 }
 
 export interface Selfie {
@@ -213,18 +216,57 @@ export function WalletCard({ status }: { status: PlantStatus | null }) {
   );
 }
 
-export function ForestCard() {
-  const me = GROOT.name;
+export function ReservoirCard({ status }: { status: PlantStatus | null }) {
+  const max = status?.reservoirMaxMl ?? 1000;
+  const ml = status?.reservoirMl;
+  const known = status !== null && status.reservoirMl !== undefined;
+  const pct = ml != null ? Math.min(100, Math.round((ml / max) * 100)) : 0;
+  return (
+    <div className="flex w-full flex-col gap-2 rounded-2xl bg-white p-3 font-inter text-[12px] text-[#273339] shadow-[0_1px_3px_rgba(0,0,0,0.06)]">
+      <div className="flex items-center justify-between">
+        <p className="font-semibold">Water reservoir</p>
+        <span className="rounded-full bg-[#F0F3F4] px-2 py-0.5 text-[10px] text-[#6B777C]">ENS</span>
+      </div>
+      {!known ? (
+        <p className="text-[#8E989C]">…</p>
+      ) : ml == null ? (
+        <p className="text-[#8E989C]">No reservoir</p>
+      ) : (
+        <>
+          <p className="tabular-nums">
+            <span className="text-[18px] font-semibold">{ml}</span>
+            <span className="text-[#8E989C]"> / {max} ml</span>
+          </p>
+          <div className="h-2 w-full overflow-hidden rounded-full bg-[#EEF2F3]" role="progressbar" aria-valuenow={ml} aria-valuemin={0} aria-valuemax={max}>
+            <div className={clsx('h-full rounded-full transition-[width] duration-500', pct < 20 ? 'bg-[#D9822B]' : 'bg-[#3F8F4E]')} style={{ width: `${pct}%` }} />
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+export function ForestCard({ status }: { status: PlantStatus | null }) {
+  const me = status?.ensName ?? GROOT.name;
+  const trees = status?.forest ?? [];
   return (
     <Card title="vantaraa.eth">
-      <ul className="space-y-0.5">
-        {['groot.vantaraa.eth', 'sapling.vantaraa.eth'].map(n => (
-          <li key={n}>
-            {n}
-            {n === me && ' (me)'}
-          </li>
-        ))}
-      </ul>
+      {trees.length === 0 ? (
+        <p className="text-[#8E989C]">Reading the forest…</p>
+      ) : (
+        <ul className="space-y-1">
+          {trees.map(t => (
+            <li key={t.name} className="flex items-baseline justify-between gap-2">
+              <span className="truncate">
+                {t.name}
+                {t.name === me && ' (me)'}
+                {t.thirsty && ' · thirsty'}
+              </span>
+              <span className="shrink-0 tabular-nums text-[#6B777C]">{t.reservoirMl == null ? 'no reservoir' : `${t.reservoirMl} ml`}</span>
+            </li>
+          ))}
+        </ul>
+      )}
     </Card>
   );
 }

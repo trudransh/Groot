@@ -1,9 +1,9 @@
 import { AgentAudioVisualizerRadial } from '@/components/AgentAudioVisualizerRadial';
-import { DiaryDialog, type DiaryEntry } from '@/components/DiaryDialog';
+import { DiaryDialog, type DiaryEntry, type MindStep } from '@/components/DiaryDialog';
 import { MicDialogState, MicPermissionDialog, micPermission } from '@/components/MicPermissionDialog';
 import { NoAgentNotification } from '@/components/NoAgentNotification';
 import { GROOT } from '@/config/agents.config';
-import { CardStack, ForestCard, Sidebar, MemoryCard, SelfieCard, ToolsCard, WalletCard, type PlantStatus, type Selfie } from '@/components/ObjectivesCard';
+import { CardStack, ForestCard, Sidebar, MemoryCard, ReservoirCard, SelfieCard, ToolsCard, WalletCard, type PlantStatus, type Selfie } from '@/components/ObjectivesCard';
 import TranscriptionView from '@/components/TranscriptionView';
 import { MicIcon } from '@/components/icons/MicIcon';
 import { PhoneDownIcon } from '@/components/icons/PhoneDownIcon';
@@ -29,7 +29,6 @@ import { FormEvent, ReactNode, useEffect, useRef, useState } from 'react';
 
 // How long someone must look at the camera to wake Groot, and how long the frame must be empty to put it back to rest.
 const LOOK_MS = 1500;
-const LISTEN_GRACE_MS = 2000;
 const LOST_MS = 10000;
 // After Groot goes back to rest, wait this long before a look can wake it again.
 const REARM_MS = 3000;
@@ -99,6 +98,19 @@ export function VoiceAssistant({
     return () => room.unregisterTextStreamHandler('groot_diary');
   }, [room]);
 
+  const [mind, setMind] = useState<MindStep[]>([]);
+  useEffect(() => {
+    room.registerTextStreamHandler('groot_mind', async reader => {
+      try {
+        const step: MindStep = JSON.parse(await reader.readAll());
+        setMind(prev => [...prev.slice(-199), step]);
+      } catch (err) {
+        console.error('Bad mind step', err);
+      }
+    });
+    return () => room.unregisterTextStreamHandler('groot_mind');
+  }, [room]);
+
   const videoRef = useRef<HTMLVideoElement>(null);
   const dormantRef = useRef(dormant);
   dormantRef.current = dormant;
@@ -113,19 +125,10 @@ export function VoiceAssistant({
     onLost: () => sendPresence('lost'),
   });
 
-  // Crowd filter: the mic only carries sound while someone is looking at Groot (with a short grace for glances away).
-  const [faceGate, setFaceGate] = useState(false);
-  useEffect(() => {
-    if (face.status === 'looking') {
-      setFaceGate(true);
-      return;
-    }
-    const t = setTimeout(() => setFaceGate(false), LISTEN_GRACE_MS);
-    return () => clearTimeout(t);
-  }, [face.status]);
+  const [talking, setTalking] = useState(false);
   useEffect(() => {
     const track = room.localParticipant.getTrackPublication(Track.Source.Microphone)?.track?.mediaStreamTrack;
-    if (track) track.enabled = faceGate;
+    if (track) track.enabled = talking;
   });
 
   // The agent's look_at_myself tool calls this to see the plant through the back camera.
@@ -148,7 +151,6 @@ export function VoiceAssistant({
   const {
     enabled: micEnabled,
     pending: micPending,
-    toggle: toggleMic,
   } = useTrackToggle({
     source: Track.Source.Microphone,
   });
@@ -167,12 +169,41 @@ export function VoiceAssistant({
     }
   };
 
-  const handleMicClick = async () => {
-    if (micEnabled) return toggleMic(false);
+  const requestMic = async () => {
     const permission = await micPermission();
     if (permission === 'granted') enableMic();
     else setMicDialog(permission === 'denied' ? 'blocked' : 'ask');
   };
+
+  const startTalking = () => {
+    if (!micEnabled) return requestMic();
+    if (dormantRef.current) sendPresence('seen');
+    setTalking(true);
+  };
+  const stopTalking = () => setTalking(false);
+
+  const startTalkingRef = useRef(startTalking);
+  startTalkingRef.current = startTalking;
+  useEffect(() => {
+    const typing = (e: KeyboardEvent) =>
+      e.target instanceof HTMLElement && (e.target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName));
+    const down = (e: KeyboardEvent) => {
+      if (e.code !== 'Space' || e.repeat || typing(e)) return;
+      e.preventDefault();
+      startTalkingRef.current();
+    };
+    const up = (e: KeyboardEvent) => {
+      if (e.code === 'Space') setTalking(false);
+    };
+    window.addEventListener('keydown', down);
+    window.addEventListener('keyup', up);
+    window.addEventListener('blur', stopTalking);
+    return () => {
+      window.removeEventListener('keydown', down);
+      window.removeEventListener('keyup', up);
+      window.removeEventListener('blur', stopTalking);
+    };
+  }, []);
 
   const combinedTranscriptions = useCombinedTranscriptions(localMessages);
 
@@ -217,6 +248,9 @@ export function VoiceAssistant({
     // Header, scrolling messages and input stack as three rows, so the input
     // never covers the messages and the messages get all the spare height.
     <div className="fixed inset-0 flex bg-[#F5F5F5]">
+      <aside className="relative z-20 h-full w-[260px] shrink-0 overflow-y-auto py-5 pl-5">
+        <DiaryDialog entries={diary} mind={mind} />
+      </aside>
       <div className="relative flex min-w-0 flex-1 flex-col">
       {/* Leaves at once: no goodbye, no end card. */}
       <button
@@ -297,17 +331,22 @@ export function VoiceAssistant({
             {/* Call controls. The rings are LiveKit's radial visualizer: they follow
                 the voice level, and for Groot also show listening and thinking. */}
             <div className="flex items-center justify-center gap-8 pt-1">
-              <RingButton
-                label={micEnabled ? moodConfig.micMuteLabel : moodConfig.micUnmuteLabel}
-                pressed={!micEnabled}
-                onClick={handleMicClick}
-                disabled={micPending || !inSession}
-                state={ringState(!micEnabled, userSpeaking ? 'speaking' : 'listening')}
-                audioTrack={micTrackRef}
-                color={accent}
-              >
-                {micEnabled ? <MicIcon color="#273339" /> : <MicOffIcon />}
-              </RingButton>
+              <div className="flex flex-col items-center gap-1">
+                <RingButton
+                  label={micEnabled ? 'Hold to talk (or hold Space)' : moodConfig.micUnmuteLabel}
+                  pressed={talking}
+                  onPress={startTalking}
+                  onRelease={stopTalking}
+                  disabled={micPending || !inSession}
+                  state={ringState(!talking, userSpeaking ? 'speaking' : 'listening')}
+                  audioTrack={micTrackRef}
+                  color={accent}
+                  dim={!talking}
+                >
+                  {micEnabled ? <MicIcon color={talking ? accent : '#273339'} /> : <MicOffIcon />}
+                </RingButton>
+                <span className="font-inter text-xs text-[#5B666B]">{talking ? 'Listening…' : micEnabled ? 'Hold to talk' : 'Turn on mic'}</span>
+              </div>
               <button
                 type="button"
                 onClick={handleEndConversation}
@@ -321,7 +360,7 @@ export function VoiceAssistant({
               <RingButton
                 label={withName(agentMuted ? moodConfig.unmuteLabel : moodConfig.muteLabel)}
                 pressed={agentMuted}
-                onClick={handleToggleMute}
+                onPress={handleToggleMute}
                 disabled={!inSession}
                 state={ringState(agentMuted, agentState)}
                 audioTrack={agentAudioTrack}
@@ -335,16 +374,15 @@ export function VoiceAssistant({
       </footer>
       </div>
       <Sidebar>
-        <WalletCard status={plantStatus} />
-        <CardStack tabs={['Camera', 'Selfie', 'Tools', 'Memory', 'Diary', 'Forest']}>
+        <CardStack tabs={['Camera', 'Selfie', 'Tools', 'Memory', 'Forest']}>
           <CameraPreview videoRef={videoRef} status={face.status} error={face.error} dormant={dormant} facing={face.facing} />
           <SelfieCard selfie={selfie} />
           <ToolsCard tools={plantStatus?.tools ?? []} />
           <MemoryCard status={plantStatus} />
-          <DiaryDialog entries={diary} />
-          <ForestCard />
+          <ForestCard status={plantStatus} />
         </CardStack>
-
+        <WalletCard status={plantStatus} />
+        <ReservoirCard status={plantStatus} />
       </Sidebar>
     </div>
   );
@@ -395,22 +433,38 @@ function ringState(muted: boolean, state: AgentState): AgentState {
 function RingButton({
   label,
   pressed,
-  onClick,
+  onPress,
+  onRelease,
   disabled,
   state,
   audioTrack,
   color,
+  dim,
   children,
 }: {
   label: string;
   pressed: boolean;
-  onClick: () => void;
+  onPress: () => void;
+  onRelease?: () => void;
   disabled?: boolean;
   state: AgentState;
   audioTrack?: TrackReferenceOrPlaceholder;
   color: string;
+  dim?: boolean;
   children: ReactNode;
 }) {
+  const hold = onRelease
+    ? {
+        onPointerDown: (e: React.PointerEvent<HTMLButtonElement>) => {
+          e.currentTarget.setPointerCapture(e.pointerId);
+          onPress();
+        },
+        onPointerUp: onRelease,
+        onPointerCancel: onRelease,
+        onLostPointerCapture: onRelease,
+        onContextMenu: (e: React.MouseEvent) => e.preventDefault(),
+      }
+    : { onClick: onPress };
   return (
     <div className="relative flex h-20 w-20 shrink-0 items-center justify-center">
       <AgentAudioVisualizerRadial
@@ -419,16 +473,16 @@ function RingButton({
         barCount={24}
         state={state}
         audioTrack={audioTrack}
-        color={pressed ? '#8E989C' : color}
+        color={(dim ?? pressed) ? '#8E989C' : color}
       />
       <button
         type="button"
-        onClick={onClick}
+        {...hold}
         disabled={disabled}
         aria-pressed={pressed}
         aria-label={label}
         title={label}
-        className="relative h-14 w-14 rounded-full bg-white text-[#273339] flex items-center justify-center shadow-md transition-colors hover:bg-[#F5F5F5] disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#3F8F4E]"
+        className="relative h-14 w-14 touch-none select-none rounded-full bg-white text-[#273339] flex items-center justify-center shadow-md transition-colors hover:bg-[#F5F5F5] disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#3F8F4E]"
       >
         {children}
       </button>
