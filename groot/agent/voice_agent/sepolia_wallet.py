@@ -7,10 +7,16 @@ import re
 from decimal import Decimal
 
 import httpx
+from eth_abi import decode, encode
 from eth_account import Account
-from eth_utils import is_address, to_checksum_address
+from eth_utils import keccak, to_checksum_address
 
 CHAIN_ID = 11155111
+ZERO_G_CHAIN_ID = 16661
+ETH_COIN_TYPE = 60
+RESOLVE_SELECTOR = keccak(text="resolve(bytes,bytes)")[:4]
+ADDR_SELECTOR = keccak(text="addr(bytes32,uint256)")[:4]
+_LABEL = re.compile(r"[a-z0-9-]+")
 EXPLORER = "https://sepolia.etherscan.io"
 ETH_DECIMALS = 18
 # Circle's USDC on Sepolia.
@@ -88,10 +94,73 @@ async def balances(address: str | None = None) -> dict:
     return {"address": owner, "ETH": whole_units(eth, ETH_DECIMALS), "USDC": whole_units(usdc, USDC["decimals"])}
 
 
-async def transfer(to: str, amount: str, symbol: str = "ETH") -> dict:
-    if not is_address(to):
-        raise ValueError(f"{to} is not an 0x address")
-    to = to_checksum_address(to)
+def universal_resolver() -> str:
+    return os.environ.get("SEPOLIA_ENS_UNIVERSAL_RESOLVER", "0xeEeEEEeE14D718C2B47D9923Deab1335E144EeEe")
+
+
+def forest_name() -> str:
+    return os.environ.get("FOREST_ENS_NAME", "vantaraa.eth").strip().lower()
+
+
+def normalize_name(name: str) -> str:
+    n = name.strip().lower().rstrip(".")
+    labels = n.split(".")
+    if n.startswith("0x") or len(labels) < 2 or not all(_LABEL.fullmatch(label) for label in labels):
+        raise ValueError(f"{name!r} is not an ENS name. Transfers go only to ENS names, never raw addresses.")
+    return n
+
+
+def namehash(name: str) -> bytes:
+    node = b"\0" * 32
+    for label in reversed(name.split(".")) if name else []:
+        node = keccak(node + keccak(text=label))
+    return node
+
+
+def dns_encode(name: str) -> bytes:
+    return b"".join(bytes([len(label)]) + label.encode() for label in name.split(".")) + b"\0"
+
+
+def in_forest(name: str) -> bool:
+    return name.endswith("." + forest_name())
+
+
+def coin_type(chain_id: int) -> int:
+    return 0x80000000 | chain_id
+
+
+async def resolve_name(name: str) -> str | None:
+    async with httpx.AsyncClient(timeout=15) as http:
+        for coin in (coin_type(CHAIN_ID), ETH_COIN_TYPE, coin_type(ZERO_G_CHAIN_ID)):
+            query = ADDR_SELECTOR + encode(["bytes32", "uint256"], [namehash(name), coin])
+            call = RESOLVE_SELECTOR + encode(["bytes", "bytes"], [dns_encode(name), query])
+            try:
+                out = str(await _rpc(http, "eth_call", [{"to": universal_resolver(), "data": "0x" + call.hex()}, "latest"]))
+                result, _ = decode(["bytes", "address"], bytes.fromhex(out.removeprefix("0x")))
+                (raw,) = decode(["bytes"], result)
+            except Exception:
+                continue
+            if len(raw) == 20 and any(raw):
+                return to_checksum_address(raw)
+    return None
+
+
+async def transfer(to_name: str, amount: str, symbol: str = "ETH", *, verified_address: str | None = None) -> dict:
+    name = normalize_name(to_name)
+    address = await resolve_name(name)
+    if not address:
+        raise ValueError(f"{name} has no wallet address set")
+    if address == own_address():
+        raise ValueError(f"{name} is your own wallet")
+    if not in_forest(name):
+        if verified_address is None:
+            raise PermissionError(f"{name} is outside the {forest_name()} forest. Its owner must verify with World ID first.")
+        if to_checksum_address(verified_address) != address:
+            raise PermissionError(f"{name} now points to a different address than the one verified with World ID. Nothing was sent.")
+    return {**await _send(address, amount, symbol), "to": name, "address": address}
+
+
+async def _send(to: str, amount: str, symbol: str) -> dict:
     token = pick_token(symbol)
     value = base_units(amount, token["decimals"] if token else ETH_DECIMALS)
     account = Account.from_key(_key())

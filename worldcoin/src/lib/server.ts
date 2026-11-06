@@ -4,6 +4,7 @@ import { createPublicClient, createWalletClient, defineChain, http, parseAbi } f
 import { privateKeyToAccount } from 'viem/accounts'
 import { mainnet } from 'viem/chains'
 import { ACR, ATTEMPT_TTL_S, ISSUER, type Attempt, type ClaimDeps, type EnsLookup } from './claim'
+import type { TransferRequest } from './transfer'
 
 export const env = (name: string) => {
   const v = process.env[name]
@@ -119,3 +120,24 @@ export const ensLookup: EnsLookup = (name, coinType) => {
   const client = createPublicClient({ chain: mainnet, transport: http(process.env.ENS_RPC_URL || undefined) })
   return client.getEnsAddress(coinType === undefined ? { name } : { name, coinType })
 }
+
+const TRANSFERS = path.join(process.cwd(), '.data', 'transfers.json')
+
+function readTransfers(): Record<string, TransferRequest> {
+  try {
+    return JSON.parse(fs.readFileSync(TRANSFERS, 'utf8'))
+  } catch {
+    return {}
+  }
+}
+
+export const getTransfer = (id: string): TransferRequest | undefined => readTransfers()[id]
+
+export function putTransfer(r: TransferRequest) {
+  const all = readTransfers()
+  all[r.id] = r
+  fs.mkdirSync(path.dirname(TRANSFERS), { recursive: true })
+  fs.writeFileSync(TRANSFERS, JSON.stringify(all))
+}
+
+export const publicOrigin = () => new URL(authConfig().redirectUri).origin

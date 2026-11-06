@@ -8,7 +8,7 @@ export const ATTEMPT_TTL_S = 600
 const SKEW_S = 60
 const CLAIM_ID = /^[\w-]{1,64}$/
 
-export type Attempt = { state: string; nonce: string; verifier: string; claimId: string; address: `0x${string}`; startedAt: number }
+export type Attempt = { state: string; nonce: string; verifier: string; claimId: string; address: `0x${string}`; startedAt: number; kind?: 'claim' | 'transfer' }
 
 export type IdClaims = { iss: string; sub: string; aud: string | string[]; nonce: string; exp: number; iat: number; auth_time?: number; acr?: string }
 
@@ -77,9 +77,15 @@ export function verifyIdToken(token: string, jwks: { keys: Jwk[] }, expect: { cl
   }
 }
 
+export function credentialError(a: Attempt, c: IdClaims, deps: { acr: string[]; now: number }): 'wrong_credential' | 'not_fresh' | null {
+  if (typeof c.acr !== 'string' || !deps.acr.includes(c.acr)) return 'wrong_credential'
+  if (typeof c.auth_time !== 'number' || c.auth_time < a.startedAt - SKEW_S || c.auth_time > deps.now + SKEW_S) return 'not_fresh'
+  return null
+}
+
 export async function completeClaim(a: Attempt, c: IdClaims, deps: ClaimDeps): Promise<ClaimResult> {
-  if (typeof c.acr !== 'string' || !deps.acr.includes(c.acr)) return fail('wrong_credential')
-  if (typeof c.auth_time !== 'number' || c.auth_time < a.startedAt - SKEW_S || c.auth_time > deps.now + SKEW_S) return fail('not_fresh')
+  const bad = credentialError(a, c, deps)
+  if (bad) return fail(bad)
 
   const key = `${a.claimId}:${c.sub}`
   if (!deps.claimSubject(key)) return fail('already_claimed')
