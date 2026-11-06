@@ -1,0 +1,13 @@
+{
+  "name": "0g-wallet-hi",
+  "private": true,
+  "type": "module",
+  "scripts": { "hi:router": "node --no-network-family-autoselection --env-file=../.env --import tsx hi-router.ts",
+    "providers": "node --no-network-family-autoselection --env-file-if-exists=.env --import tsx list-providers.ts",
+    "hi": "node --no-network-family-autoselection --env-file-if-exists=.env --import tsx hi.ts" },
+  "dependencies": {
+    "@0gfoundation/0g-compute-ts-sdk": "0.9.0",
+    "ethers": "^6.17.0"
+  },
+  "devDependencies": { "@types/node": "^24.0.0", "tsx": "^4.23.15" }
+}
