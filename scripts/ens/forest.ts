@@ -2,7 +2,7 @@ import { encodeAbiParameters, encodeFunctionData, keccak256, labelhash, parseEve
 import { packetToBytes } from 'viem/ens'
 import { ENS_V2_SEPOLIA as A } from './addresses.js'
 import { GUARDIAN_REGISTRY_ROLES, GUARDIAN_RESOLVER_ROLES, PLANT_TOKEN_ROLES, ZERO_G_COIN_TYPE } from './roles.js'
-import { PLANTS_KEY, SIGNAL, parseSignal, signalKey, type SignalCode } from './signal.js'
+import { PLANTS_KEY, SIGNAL, parseReservoir, parseSignal, reservoirKey, signalKey, type SignalCode } from './signal.js'
 import resolverAbi from './abi/PermissionedResolver.json' with { type: 'json' }
 import userRegistryAbi from './abi/UserRegistry.json' with { type: 'json' }
 import factoryAbi from './abi/VerifiableFactory.json' with { type: 'json' }
@@ -42,7 +42,7 @@ export const setTextCall = (name: string, key: string, value: string) =>
 export const setAddressCall = (name: string, address: Address) =>
   encodeFunctionData({ abi: resolverAbi, functionName: 'setAddress', args: [dnsName(name), ZERO_G_COIN_TYPE, address] })
 
-async function registerEthName(c: Clients, label: string, subregistry: Address, resolver: Address, durationS: bigint, waitForCommit: () => Promise<void>) {
+export async function registerEthName(c: Clients, label: string, subregistry: Address, resolver: Address, durationS: bigint, waitForCommit: () => Promise<void>) {
   const owner = c.wallet.account!.address
   const secret = keccak256(stringToHex(`${label}:${owner}:${Date.now()}`))
   const referrer = `0x${'00'.repeat(32)}` as Hex
@@ -56,6 +56,24 @@ async function registerEthName(c: Clients, label: string, subregistry: Address, 
   await send(c, { address: A.ETHRegistrar, abi: registrarAbi, functionName: 'commit', args: [commitment] })
   await waitForCommit()
   await send(c, { address: A.ETHRegistrar, abi: registrarAbi, functionName: 'register', args: [label, owner, secret, subregistry, resolver, durationS, A.MockUSDC, referrer] })
+}
+
+export const ETH_COIN_TYPE = 60n
+export const SEPOLIA_COIN_TYPE = 0x80000000n | 11155111n
+
+export const setCoinAddressCall = (name: string, coinType: bigint, address: Address) =>
+  encodeFunctionData({ abi: resolverAbi, functionName: 'setAddress', args: [dnsName(name), coinType, address] })
+
+export async function createPersonName(c: Clients, label: string, address: Address, durationS: bigint, waitForCommit: () => Promise<void>) {
+  const name = `${label}.eth`
+  const owner = c.wallet.account!.address
+  const resolver = await deployProxy(c, A.PermissionedResolverImpl, `person-resolver:${name}:${owner}`,
+    encodeFunctionData({ abi: resolverAbi, functionName: 'initialize', args: [[{ account: owner, roleBitmap: GUARDIAN_RESOLVER_ROLES }], [
+      setCoinAddressCall(name, ETH_COIN_TYPE, address),
+      setCoinAddressCall(name, SEPOLIA_COIN_TYPE, address),
+    ]] }))
+  await registerEthName(c, label, zeroAddress, resolver, durationS, waitForCommit)
+  return { name, label, resolver, address }
 }
 
 export async function createForest(c: Clients, label: string, durationS: bigint, waitForCommit: () => Promise<void>): Promise<Forest> {
@@ -92,6 +110,16 @@ export async function addPlant(c: Clients, forest: Forest, plant: Plant, allLabe
 export async function sendSignal(c: Clients, forest: Forest, plantLabel: string, code: SignalCode) {
   const receipt = await send(c, { address: forest.resolver, abi: resolverAbi, functionName: 'setText', args: [dnsName(forest.name), signalKey(plantLabel), code] })
   return receipt.transactionHash
+}
+
+export async function setReservoir(c: Clients, forest: Forest, plantLabel: string, ml: number | null) {
+  const receipt = await send(c, { address: forest.resolver, abi: resolverAbi, functionName: 'setText', args: [dnsName(forest.name), reservoirKey(plantLabel), ml === null ? '' : String(ml)] })
+  return receipt.transactionHash
+}
+
+export async function readReservoirs(pub: PublicClient, forestName: string) {
+  const labels = ((await pub.getEnsText({ name: forestName, key: PLANTS_KEY })) ?? '').split(',').filter(Boolean)
+  return Promise.all(labels.map(async (label) => ({ label, ml: parseReservoir(await pub.getEnsText({ name: forestName, key: reservoirKey(label) })) })))
 }
 
 export async function readForest(pub: PublicClient, forestName: string) {
