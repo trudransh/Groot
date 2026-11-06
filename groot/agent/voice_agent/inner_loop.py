@@ -5,37 +5,28 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import re
+import time
+from datetime import datetime, timezone
 from typing import Awaitable, Callable
 
 from livekit import rtc
 
-from voice_agent import diary, plant_state, plant_tools, zero_g
+from voice_agent import diary, forest, plant_state, plant_tools, wallet, water, zero_g
 from voice_agent.logger import get_logger
-from voice_agent.persona import NAME, OBJECTIVES, PERSONA, PLANTS_IN_DISTRESS
+from voice_agent.persona import INNER_OBJECTIVES, NAME, PERSONA, PLANT_CARE, PLANTS_IN_DISTRESS
 
 logger = get_logger()
 
 DIARY_TOPIC = "groot_diary"
+MIND_TOPIC = "groot_mind"
 DEFAULT_SLEEP_MIN = float(os.environ.get("INNER_DEFAULT_SLEEP_MIN", "20"))
-MAX_STEPS = 6
+MAX_STEPS = 10
+SELFIE_REUSE_MIN = float(os.environ.get("SELFIE_REUSE_MIN", "10"))
+POKE_MIN_GAP_MIN = float(os.environ.get("INNER_POKE_MIN_GAP_MIN", "2"))
+_SLEEPING_SUFFIX = re.compile(r"\s*\(sleeping [\d.]+ min\)", re.IGNORECASE)
 
 _TOOLS = [
-    {
-        "type": "function",
-        "function": {
-            "name": "take_selfie",
-            "description": "Flip your own camera to yourself and save a fresh selfie with its time.",
-            "parameters": {"type": "object", "properties": {}},
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "see_selfie",
-            "description": "Look at your latest saved selfie: leaves, soil, thirst.",
-            "parameters": {"type": "object", "properties": {}},
-        },
-    },
     {
         "type": "function",
         "function": {
@@ -52,12 +43,19 @@ _TOOLS = [
         "type": "function",
         "function": {
             "name": "water_myself",
-            "description": "Run your pump for 1-30 seconds. Only when you are actually thirsty and not watered recently.",
+            "description": f"Drink {water.DRINK_ML} ml from your reservoir with your pump, when a fresh selfie shows thirst and the reservoir has water.",
             "parameters": {
                 "type": "object",
-                "properties": {"seconds": {"type": "integer", "minimum": 1, "maximum": 30}},
-                "required": ["seconds"],
+                "properties": {"critical": {"type": "boolean", "description": "True only when the selfie shows critical thirst; lets you drink sooner after your last drink."}},
             },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "my_reservoir",
+            "description": "Check your water reservoir level, any open refill offer, and your watering and selfie history.",
+            "parameters": {"type": "object", "properties": {}},
         },
     },
     {
@@ -78,18 +76,32 @@ _TOOLS = [
 ]
 
 
-def _prompt() -> str:
+_TOOL_NAMES = [t["function"]["name"] for t in _TOOLS]
+
+
+def _prompt(forest_context: str = "") -> str:
     return "\n\n".join(
         (
             f"You are {NAME}, alone with your thoughts. This is your inner voice, not a conversation: nobody hears it.",
             PERSONA.strip(),
-            "Your objectives:\n" + OBJECTIVES.strip(),
-            "Plants in distress:\n" + PLANTS_IN_DISTRESS.strip(),
+            PLANT_CARE.strip(),
+            "Your objectives right now:\n" + INNER_OBJECTIVES.strip(),
+            ("Your forest:\n" + forest_context) if forest_context else "Plants in distress:\n" + PLANTS_IN_DISTRESS.strip(),
             "Live like a person: notice how you feel, decide whether anything needs doing, do it with your tools, "
-            "then sleep. You only know how you look from your selfies; your memory says when the last one was taken. "
-            "Write short, honest diary lines in your fast-talking comic voice, in English. End every moment by calling sleep.",
+            "then sleep. Act with tool calls, never only words: if your selfie shows thirst and your reservoir has water, call water_myself; "
+            f"each drink is {water.DRINK_ML} ml. You only know how you look from your selfie, which is taken and read for you each time you wake; trust it and do not ask for another. "
+            f"Right now you can only use these tools: {', '.join(_TOOL_NAMES)}. "
+            "Deals with people (offer_refill, check_refill, wallet_transfer, haggling) happen only in conversations, never here; plan them for the next visitor. "
+            "Every thought is at most two short sentences in your fast-talking comic voice, in English; never repeat yourself. "
+            "End every moment by calling sleep.",
         )
     )
+
+
+_ACT = (
+    "Do not just think it, act on it now with a tool call. Thirsty and your reservoir has water? Call water_myself. "
+    "Nothing to do? Call sleep."
+)
 
 
 def _tool_args(raw: object) -> dict | None:
@@ -98,6 +110,25 @@ def _tool_args(raw: object) -> dict | None:
     except json.JSONDecodeError:
         return None
     return args if isinstance(args, dict) else None
+
+
+_DECISIONS = {
+    "take_selfie": "take a selfie",
+    "see_selfie": "look at my selfie",
+    "record_leaves": "note my leaves",
+    "my_reservoir": "check my reservoir",
+    "water_myself": f"drink {water.DRINK_ML} ml from my reservoir",
+    "sleep": "sleep",
+}
+
+
+def decision_label(name: str, args: dict) -> str:
+    action = _DECISIONS.get(name, name)
+    if name == "sleep" and "minutes" in args:
+        return f"Decided to {action} for {_sleep_minutes(args['minutes']):.0f} min"
+    if name == "water_myself" and args.get("critical") is True:
+        return f"Decided to {action} (critical)"
+    return f"Decided to {action}"
 
 
 def _sleep_minutes(value: object) -> float:
@@ -122,22 +153,28 @@ class InnerLoop:
         self._poke.set()
 
     async def publish(self) -> None:
-        await self.room.local_participant.send_text(json.dumps(diary.load()[-100:]), topic=DIARY_TOPIC)
+        await self.room.local_participant.send_text(json.dumps(diary.load()[-300:]), topic=DIARY_TOPIC)
 
-    async def _note(self, kind: str, text: str) -> None:
-        diary.write(kind, text)
+    async def _mind(self, state: str, step: str, sleep_min: float | None = None, **extra: object) -> None:
+        payload = {"state": state, "step": step, "at": datetime.now(timezone.utc).isoformat()}
+        if sleep_min is not None:
+            payload["sleepMin"] = sleep_min
+        payload.update({k: v for k, v in extra.items() if v is not None})
+        try:
+            await self.room.local_participant.send_text(json.dumps(payload), topic=MIND_TOPIC)
+        except Exception as e:
+            logger.warning("Could not send mind step: %s", e)
+
+    async def _note(self, kind: str, text: str, **extra: object) -> None:
+        diary.write(kind, text, **extra)
         await self.publish()
 
     async def run(self) -> None:
         await self.publish()
+        await self._mind("awake", "Someone came by, waking up")
         sleep_min = 0.1
         while True:
-            try:
-                await asyncio.wait_for(self._poke.wait(), timeout=sleep_min * 60)
-            except asyncio.TimeoutError:
-                pass
-            self._poke.clear()
-            note, self._poke_note = self._poke_note, ""
+            note = await self._rest(sleep_min)
             try:
                 sleep_min = await self._moment(note)
             except asyncio.CancelledError:
@@ -146,18 +183,60 @@ class InnerLoop:
                 logger.exception("Inner loop moment failed")
                 sleep_min = DEFAULT_SLEEP_MIN
 
+    async def _rest(self, minutes: float) -> str:
+        deadline = time.monotonic() + minutes * 60
+        await asyncio.sleep(min(minutes, POKE_MIN_GAP_MIN) * 60)
+        remaining = deadline - time.monotonic()
+        if remaining > 0:
+            try:
+                await asyncio.wait_for(self._poke.wait(), timeout=remaining)
+            except asyncio.TimeoutError:
+                pass
+        self._poke.clear()
+        note, self._poke_note = self._poke_note, ""
+        return note
+
+    async def _pump(self) -> str:
+        return await plant_tools.pump_health()
+
+    async def _look(self) -> str:
+        recent = plant_state.fresh_look(SELFIE_REUSE_MIN)
+        if recent:
+            return f"{plant_state.selfie_line()} It shows: {recent}"
+        await self._mind("awake", "Taking a selfie")
+        taken = await self._call("take_selfie", {})
+        if taken.startswith("Could not"):
+            return f"{taken} Your last look: {plant_state.watering_summary()}"
+        await self._mind("awake", "Looking at my selfie")
+        return await self._call("see_selfie", {})
+
     async def _moment(self, note: str) -> float:
+        await self._mind("awake", "Waking up")
         await self._note("wake", "Woke up from a nap." if not note else note)
+        await self._mind("awake", "Looking around the forest")
+        try:
+            trees = await asyncio.wait_for(forest.fetch(), timeout=8)
+        except Exception:
+            trees = []
+        await self._mind("awake", "Checking my reservoir")
+        try:
+            reservoir = await water.reservoir_status()
+        except Exception as e:
+            reservoir = f"Could not read your reservoir ({e}). {plant_state.watering_summary()}"
+        sight = await self._look()
+        pump = await self._pump()
         messages: list[dict] = [
-            {"role": "system", "content": _prompt()},
+            {"role": "system", "content": _prompt(forest.context(trees, forest.sw.forest_name(), wallet.ens_name()))},
             {
                 "role": "user",
-                "content": f"Your memory:\n{plant_state.watering_summary()}\n\nYour recent diary:\n{diary.recent_text()}"
+                "content": f"Your fresh selfie, just now:\n{sight}\n\nYour pump: {pump}\n\nYour memory:\n{reservoir}\n\nYour recent diary:\n{diary.recent_text()}"
                 + (f"\n\nJust now: {note}" if note else "")
                 + "\n\nWhat do you think and do now?",
             },
         ]
         for _ in range(MAX_STEPS):
+            await self._mind("awake", f"Thinking on 0G ({self.model})", kind="thinking")
+            started = time.monotonic()
             try:
                 resp = await self.client.chat.completions.create(model=self.model, messages=messages, tools=_TOOLS, max_tokens=zero_g.MAX_TOKENS)
             except Exception as e:
@@ -167,18 +246,31 @@ class InnerLoop:
             msg = resp.choices[0].message if resp.choices else None
             if msg is None:
                 return await self._wait("0G sent nothing")
-            if isinstance(msg.content, str) and msg.content.strip():
-                await self._note("thought", msg.content)
+            ms = round((time.monotonic() - started) * 1000)
+            thought = msg.content.strip() if isinstance(msg.content, str) else ""
             if not msg.tool_calls:
-                break
+                if thought:
+                    await self._note("decision", "Thought", thought=thought, ms=ms)
+                    await self._mind("awake", "Thought", kind="decision", thought=thought, ms=ms)
+                messages.append({"role": "assistant", "content": thought})
+                messages.append({"role": "user", "content": _ACT})
+                continue
             messages.append(msg.model_dump(exclude_none=True))
-            for call in msg.tool_calls:
+            for i, call in enumerate(msg.tool_calls):
                 args = _tool_args(call.function.arguments)
                 if args is None:
                     return await self._wait(f"unreadable {call.function.name} request")
+                first = i == 0
+                label = decision_label(call.function.name, args)
+                said = (thought or None) if first else None
+                took = ms if first else None
+                await self._note("decision", label, thought=said, ms=took)
+                await self._mind("awake", label, kind="decision", thought=said, ms=took)
                 if call.function.name == "sleep":
                     minutes = _sleep_minutes(args.get("minutes"))
-                    await self._note("sleep", f"{str(args.get('diary', '')).strip()} (sleeping {minutes:.0f} min)")
+                    entry = _SLEEPING_SUFFIX.sub("", str(args.get("diary", ""))).strip()
+                    await self._note("sleep", f"{entry} (sleeping {minutes:.0f} min)")
+                    await self._mind("sleeping", f"Sleeping {minutes:.0f} min", minutes)
                     return minutes
                 result = await self._call(call.function.name, args)
                 messages.append({"role": "tool", "tool_call_id": call.id, "content": result})
@@ -187,11 +279,10 @@ class InnerLoop:
     async def _wait(self, reason: str) -> float:
         prefix = f"{reason}. " if reason else ""
         await self._note("sleep", f"{prefix}Dozed off (sleeping {DEFAULT_SLEEP_MIN:.0f} min)")
+        await self._mind("sleeping", f"Sleeping {DEFAULT_SLEEP_MIN:.0f} min", DEFAULT_SLEEP_MIN)
         return DEFAULT_SLEEP_MIN
 
     async def _call(self, name: str, args: dict) -> str:
-        if self.is_busy() and name == "water_myself":
-            return "Someone is talking to you right now; do this later."
         if name == "take_selfie":
             try:
                 at = await plant_tools.take_selfie(self.room)
@@ -209,18 +300,15 @@ class InnerLoop:
             plant_state.record_leaves(args.get("count"), args.get("note", ""))
             await self.on_change()
             return "Saved."
+        if name == "my_reservoir":
+            return await water.reservoir_status()
         if name == "water_myself":
-            hours = plant_state.hours_since_last_watering()
-            if hours is not None and hours < plant_state.MIN_HOURS_BETWEEN_WATERINGS:
-                return f"Refused: last watered {hours:.1f} hours ago."
-            seconds = int(args.get("seconds", 5))
             try:
-                await plant_tools.run_pump(seconds)
+                result = await water.water_from_reservoir(plant_tools.run_pump, args.get("critical") is True)
             except Exception as e:
                 await self._note("action", f"Tried to water myself, pump failed ({e}).")
                 return f"Pump failed ({e})."
-            entry = plant_state.record_watering(seconds * plant_tools.PUMP_ML_PER_SECOND, seconds, "pump")
-            await self._note("action", f"Watered myself: {seconds}s, about {entry['ml']} ml.")
+            await self._note("action", result)
             await self.on_change()
-            return f"Watered about {entry['ml']} ml."
-        return f"Unknown tool {name}."
+            return result
+        return f"{name} is not available while you are alone; deals with people happen in a conversation. Use one of: {', '.join(_TOOL_NAMES)}."

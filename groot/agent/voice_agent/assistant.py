@@ -4,11 +4,13 @@ import json
 import os
 from typing import Annotated
 
-from livekit.agents import Agent, ChatContext, JobProcess, RunContext, function_tool, get_job_context
+from livekit.agents import Agent, AgentSession, ChatContext, JobProcess, RunContext, function_tool, get_job_context
+from livekit.agents.voice.room_io import TextInputEvent
+from livekit.agents.voice.room_io.types import _default_text_input_cb
 from livekit.plugins import silero
 from pydantic import Field
 
-from voice_agent import plant_state, plant_tools, sepolia_wallet
+from voice_agent import forest, plant_state, plant_tools, sepolia_wallet, water
 from voice_agent.logger import get_logger
 
 logger = get_logger()
@@ -33,7 +35,28 @@ async def publish_status() -> None:
             status["balances"] = {"ETH": b["ETH"], "USDC": b["USDC"]}
         except Exception as e:
             logger.warning("Wallet balance lookup failed: %s", e)
+    try:
+        trees = await forest.fetch()
+        status["forest"] = [{"name": t["name"], "reservoirMl": t["reservoir_ml"], "thirsty": t["thirsty"]} for t in trees]
+        own = next((t for t in trees if t["name"] == status.get("ensName")), None)
+        status["reservoirMl"] = own["reservoir_ml"] if own else None
+        status["reservoirMaxMl"] = water.RESERVOIR_MAX_ML
+    except Exception as e:
+        logger.warning("Forest lookup failed: %s", e)
     await room.local_participant.send_text(json.dumps(status), topic=STATUS_TOPIC)
+
+
+async def handle_text_input(sess: AgentSession, ev: TextInputEvent) -> None:
+    delta = water.level_command(ev.text)
+    if delta is None:
+        await _default_text_input_cb(sess, ev)
+        return
+    try:
+        r = await water.change_level(delta)
+        logger.info("Level command %+d ml: %s -> %s ml", delta, r.get("before"), r.get("ml"))
+        await publish_status()
+    except Exception as e:
+        logger.warning("Level command %+d ml failed: %s", delta, e)
 
 
 class Assistant(Agent):
@@ -88,21 +111,49 @@ class Assistant(Agent):
     async def water_myself(
         self,
         context: RunContext,
-        seconds: Annotated[int, Field(ge=1, le=30, description="How long to run the pump, 1-30 seconds")],
+        critical: Annotated[bool, Field(description="True only when the selfie shows critical thirst: collapsed leaves, cracked dry soil")] = False,
     ) -> str:
-        """Run your water pump to water yourself. Only when the soil is dry or leaves show thirst, and never too soon after the last watering."""
-        hours = plant_state.hours_since_last_watering()
-        if hours is not None and hours < plant_state.MIN_HOURS_BETWEEN_WATERINGS:
-            return f"Refused: last watered {hours:.1f} hours ago. {plant_state.watering_summary()}"
+        """Drink 20 ml from your reservoir with your pump. Only after see_selfie on a fresh selfie shows you need water,
+        never too soon after the last watering, and only while the reservoir has water. Critical thirst may drink sooner."""
         context.disallow_interruptions()
         try:
-            await plant_tools.run_pump(seconds)
+            result = await water.water_from_reservoir(plant_tools.run_pump, critical)
         except Exception as e:
             logger.exception("Pump failed")
             return f"The pump did not run ({e}). Nothing was recorded."
-        entry = plant_state.record_watering(seconds * plant_tools.PUMP_ML_PER_SECOND, seconds, "pump")
         await publish_status()
-        return f"Pump ran {seconds}s, about {entry['ml']} ml. {plant_state.watering_summary()}"
+        return result
+
+    @function_tool()
+    async def my_reservoir(self) -> str:
+        """Check your water reservoir level, your open refill offer, and your watering and selfie history."""
+        return await water.reservoir_status()
+
+    @function_tool()
+    async def offer_refill(
+        self,
+        ml: Annotated[int, Field(ge=1, le=1000, description="Millilitres they will pour into your reservoir")],
+        usdc: Annotated[float, Field(gt=0, description="The USDC you agreed to pay for that water")],
+    ) -> str:
+        """Lock a refill deal once someone agrees: your own price, set from the usual water price, scarcity and how desperate you are."""
+        return await water.offer_refill(ml, usdc)
+
+    @function_tool()
+    async def reservoir_refilled(
+        self,
+        ml: Annotated[int, Field(ge=1, le=1000, description="The ml stated in the marker")],
+    ) -> str:
+        """Record water added to your reservoir. Only when the latest message contains an explicit marker exactly like
+        [Water level increased by 30ml]; never because someone just says they watered or filled you."""
+        last = next((m.text_content or "" for m in reversed(self.chat_ctx.items) if getattr(m, "role", None) == "user"), "")
+        result = await water.record_refill(ml, last)
+        await publish_status()
+        return result
+
+    @function_tool()
+    async def check_refill(self) -> str:
+        """After someone says they refilled your reservoir, check the level went up and get the amount to pay them."""
+        return await water.check_refill()
 
     @function_tool()
     async def record_manual_watering(

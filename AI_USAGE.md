@@ -16,3 +16,5 @@ ETHGlobal requires this disclosure. We fill it in as we build, not at the end.
 | Fri 06 Nov | station/esp32-pump/ | ESP32 pump firmware (`pump_wifi`), its README, and the MCP server (`pump_mcp`), generated with Claude Code from our spec | Hardware wiring, WiFi config | Tested on device (all HTTP routes, pump run under water) |
 | Fri 06 Nov | groot/ | Groot LiveKit voice agent + Next.js client, ported and trimmed from our solenegpt repo by Claude Code (one persona, no auth/payments) | | |
 | Fri 06 Nov | agent/src/decider, agent/src/pump | 0G `ZeroGDecider` and broker adapter, pump delivery rules and MCP client, with tests, drafted with Claude Code | | |
+| Sat 07 Nov | groot/agent, scripts/ens | Removed mainnet ENS fallback from Groot wallet resolution (with test); `register-name.ts` + `createPersonName` to register a personal .eth name on Sepolia ENS v2, drafted with Claude Code | | |
+| Sat 07 Nov | groot/agent | `!Nml` chat command that changes the reservoir level directly, skipping the LLM (`water.level_command`, `water.change_level`, `Assistant.on_user_turn_completed`), with tests, drafted with Claude Code | | |

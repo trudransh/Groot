@@ -36,6 +36,16 @@ def record_watering(ml: float | None, seconds: int | None, source: str) -> dict:
     return entry
 
 
+def set_refill_offer(offer: dict | None) -> None:
+    state = load()
+    state["refill_offer"] = {**offer, "at": _now().isoformat()} if offer else None
+    _save(state)
+
+
+def refill_offer() -> dict | None:
+    return load().get("refill_offer")
+
+
 def record_leaves(count: int | None, note: str) -> dict:
     state = load()
     entry = {"at": _now().isoformat(), "count": count, "note": note}
@@ -76,6 +86,17 @@ def selfie_data_url() -> str | None:
 
 def selfie_at() -> str | None:
     return (load().get("selfie") or {}).get("at")
+
+
+def fresh_look(max_minutes: float) -> str | None:
+    at = selfie_at()
+    looks = load().get("looks", [])
+    if not at or not looks:
+        return None
+    age_min = (_now() - datetime.fromisoformat(at)).total_seconds() / 60
+    if not 0 <= age_min <= max_minutes or looks[-1]["at"] < at:
+        return None
+    return looks[-1]["saw"]
 
 
 def selfie_line() -> str:
@@ -124,7 +145,7 @@ def watering_summary() -> str:
     )
 
 
-TOOL_NAMES = ["take_selfie", "see_selfie", "record_leaves", "watering_history", "water_myself", "record_manual_watering", "sleep"]
+TOOL_NAMES = ["take_selfie", "see_selfie", "record_leaves", "watering_history", "my_reservoir", "water_myself", "offer_refill", "reservoir_refilled", "check_refill", "record_manual_watering", "sleep"]
 
 
 def status() -> dict:

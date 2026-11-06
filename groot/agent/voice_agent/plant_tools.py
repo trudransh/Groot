@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+from pathlib import Path
 
 import httpx
 from livekit import rtc
@@ -93,10 +94,34 @@ async def describe_photo(data_url: str) -> str:
     return content.strip() if isinstance(content, str) and content.strip() else COULD_NOT_SEE
 
 
+def pump_mcp_path() -> str:
+    return os.environ.get("PUMP_MCP_PATH", str(Path(__file__).resolve().parents[3] / "station" / "esp32-pump" / "pump_mcp" / "server.js"))
+
+
+async def pump_health(transport: httpx.AsyncBaseTransport | None = None) -> str:
+    if not PUMP_URL or not PUMP_TOKEN:
+        return "Your pump is not configured, so you cannot drink until someone sets it up."
+    try:
+        async with httpx.AsyncClient(timeout=4, transport=transport) as http:
+            res = await http.get(f"{PUMP_URL}/status")
+            res.raise_for_status()
+    except Exception as e:
+        return f"Your pump did not answer just now ({type(e).__name__}); water_myself may fail."
+    return "Your pump is connected and working, checked just now. Ignore any older diary note that says it is broken."
+
+
 async def run_pump(seconds: int) -> dict:
+    from mcp import ClientSession, StdioServerParameters
+    from mcp.client.stdio import stdio_client
+
     if not PUMP_URL or not PUMP_TOKEN:
         raise RuntimeError("pump is not configured (PUMP_URL / PUMP_TOKEN)")
-    async with httpx.AsyncClient(timeout=5) as http:
-        res = await http.post(f"{PUMP_URL}/pump", params={"seconds": seconds}, headers={"X-Token": PUMP_TOKEN})
-        res.raise_for_status()
-        return res.json()
+    env = {**os.environ, "RESERVOIR_URL": os.environ.get("RESERVOIR_URL", "http://127.0.0.1:8790"), "PUMP_ML_PER_SECOND": str(PUMP_ML_PER_SECOND)}
+    params = StdioServerParameters(command="node", args=[pump_mcp_path()], env=env)
+    async with stdio_client(params) as (read, write), ClientSession(read, write) as session:
+        await session.initialize()
+        result = await session.call_tool("pump_run", {"seconds": seconds})
+    text = "".join(getattr(c, "text", "") for c in result.content)
+    if result.is_error:
+        raise RuntimeError(text or "pump_run failed")
+    return json.loads(text)

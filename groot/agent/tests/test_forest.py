@@ -6,8 +6,8 @@ GROOT = "0x02871e1b819Dd5ce394337d0A2E8C19686887ba1"
 SAPLING = "0xA11E25e4135739027fdC6E62B5e183769821829F"
 
 TREES = [
-    {"label": "groot", "name": "groot.vantaraa.eth", "address": GROOT, "species": "groot", "thirsty": False},
-    {"label": "sapling", "name": "sapling.vantaraa.eth", "address": SAPLING, "species": "sapling", "thirsty": True},
+    {"label": "groot", "name": "groot.vantaraa.eth", "address": GROOT, "species": "groot", "thirsty": False, "reservoir_ml": 50},
+    {"label": "sapling", "name": "sapling.vantaraa.eth", "address": SAPLING, "species": "sapling", "thirsty": True, "reservoir_ml": None},
 ]
 
 
@@ -15,6 +15,7 @@ def test_fetch_reads_every_subname_listed_on_the_forest(monkeypatch):
     texts = {
         ("vantaraa.eth", "forest.plants"): "groot, sapling,",
         ("vantaraa.eth", "signal.sapling"): "1",
+        ("vantaraa.eth", "reservoir.groot"): "50",
         ("groot.vantaraa.eth", "forest.species"): "groot",
         ("sapling.vantaraa.eth", "forest.species"): "sapling",
     }
@@ -61,3 +62,16 @@ def test_prompt_carries_forest_context_instead_of_blind_line():
     assert ctx in prompt
     assert "cannot see the other plants" not in prompt
     assert "cannot see the other plants" in build_prompt("")
+
+
+def test_context_shows_reservoir_levels_and_missing_ones():
+    text = forest.context(TREES, "vantaraa.eth", "groot.vantaraa.eth")
+    assert "water reservoir at 50 of 1000 ml" in text
+    assert "no water reservoir" in text
+
+
+def test_parse_reservoir():
+    assert forest.parse_reservoir("50") == 50
+    assert forest.parse_reservoir("1000") == 1000
+    for bad in ["", "1001", "-1", "5.5", "abc"]:
+        assert forest.parse_reservoir(bad) is None

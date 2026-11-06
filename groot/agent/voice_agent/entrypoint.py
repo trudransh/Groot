@@ -20,13 +20,14 @@ from livekit.plugins.turn_detector.english import EnglishModel
 from voice_agent.persona import (
     STT_KEYWORDS,
 )
-from voice_agent.assistant import Assistant, prewarm, publish_status
+from voice_agent.assistant import Assistant, handle_text_input, prewarm, publish_status
 from voice_agent.persona import build_prompt
-from voice_agent import diary, forest, plant_state, plant_tools, wallet, zero_g
+from voice_agent import diary, forest, plant_state, plant_tools, wallet, water, zero_g
 from voice_agent.inner_loop import InnerLoop
 from voice_agent.presence import PRESENCE_TOPIC, go_dormant, prerecord_greeting, publish_state, wake
 from voice_agent.logger import get_logger
 from livekit.agents import mcp
+from livekit.agents.voice import room_io
 import sys
 
 logger = get_logger()
@@ -59,7 +60,13 @@ async def _forest() -> str:
     except Exception as e:
         logger.warning("Forest lookup failed: %s", e)
         trees = []
-    return forest.context(trees, forest.sw.forest_name(), wallet.ens_name())
+    try:
+        refill = await asyncio.wait_for(water.pitch(), timeout=8)
+    except Exception as e:
+        logger.warning("Reservoir lookup failed: %s", e)
+        refill = ""
+    context = forest.context(trees, forest.sw.forest_name(), wallet.ens_name())
+    return f"{context}\n\nYour water deal right now: {refill}" if refill else context
 
 
 def _memory() -> str:
@@ -269,7 +276,7 @@ async def entrypoint(ctx: JobContext):
         lambda reader, _identity: _spawn(async_handle_presence(reader, ctx, session, inner, agent)),
     )
 
-    await session.start(room=ctx.room, agent=agent)
+    await session.start(room=ctx.room, agent=agent, room_options=room_io.RoomOptions(text_input=room_io.TextInputOptions(text_input_cb=handle_text_input)))
     session.input.set_audio_enabled(False)
     await publish_state(session, ctx.room)
     await publish_status()

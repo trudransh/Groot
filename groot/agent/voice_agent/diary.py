@@ -17,10 +17,11 @@ def load() -> list[dict]:
     return []
 
 
-def write(kind: str, text: str) -> dict:
-    """kind: thought, action, sleep, wake or conversation."""
+def write(kind: str, text: str, **extra: object) -> dict:
+    """kind: decision, thought, action, sleep, wake or conversation."""
     entries = load()
     entry = {"at": datetime.now(timezone.utc).isoformat(), "kind": kind, "text": text.strip()}
+    entry.update({k: v for k, v in extra.items() if v is not None})
     entries.append(entry)
     DIARY_PATH.parent.mkdir(parents=True, exist_ok=True)
     DIARY_PATH.write_text(json.dumps(entries[-KEEP:], indent=2))
