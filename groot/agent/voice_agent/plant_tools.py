@@ -98,6 +98,10 @@ def pump_mcp_path() -> str:
     return os.environ.get("PUMP_MCP_PATH", str(Path(__file__).resolve().parents[3] / "station" / "esp32-pump" / "pump_mcp" / "server.js"))
 
 
+def has_pump() -> bool:
+    return bool(PUMP_URL and PUMP_TOKEN)
+
+
 async def pump_health(transport: httpx.AsyncBaseTransport | None = None) -> str:
     if not PUMP_URL or not PUMP_TOKEN:
         return "Your pump is not configured, so you cannot drink until someone sets it up."

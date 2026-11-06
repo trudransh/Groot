@@ -8,7 +8,7 @@ from datetime import datetime, timedelta, timezone
 
 import httpx
 
-from voice_agent import plant_state, sepolia_wallet as sw, water
+from voice_agent import plant_state, plant_tools, sepolia_wallet as sw, water
 
 STANDARD_WATERING_ML = 200
 MIN_SPARE_RESERVOIR_ML = 200
@@ -41,7 +41,7 @@ def _now() -> datetime:
 
 
 def _state() -> dict:
-    return plant_state.load().get("distress") or {"seen": [], "help": None, "ignored": {}, "settle": None}
+    return {"seen": [], "help": None, "ignored": {}, "settle": None, "own": False, **(plant_state.load().get("distress") or {})}
 
 
 def _save(d: dict) -> None:
@@ -74,6 +74,10 @@ def sync(trees: list[dict], own_name: str | None) -> dict:
     now = [t["name"] for t in calls(trees, own_name)]
     raised = [n for n in now if n not in d["seen"]]
     cleared = [n for n in d["seen"] if n not in now]
+    own = next((t["thirsty"] for t in trees if t.get("name") == own_name), None)
+    if own is not None and own != d["own"]:
+        d["own"] = own
+        _save(d)
     if not raised and not cleared:
         return {"raised": [], "cleared": []}
     for name in cleared:
@@ -138,6 +142,7 @@ def context() -> str:
         text = head + "\n" + "\n".join(lines)
     else:
         text = "No plant in your forest is in distress right now."
+    text = own_context(d["own"]) + "\n" + text
     s = _settle()
     if s:
         text += (
@@ -208,3 +213,40 @@ async def tick(own_name: str | None, poke: Callable[[str], None], refresh: Calla
         poke(" ".join(notes))
         await refresh()
     return events
+
+
+def own_signal() -> bool:
+    return bool(_state()["own"])
+
+
+def own_context(on: bool) -> str:
+    state = "on: the forest knows you need help" if on else "off"
+    if plant_tools.has_pump():
+        how = "You have a pump, so you water yourself; raise it with signal_distress only if your reservoir is empty and you are thirsty."
+    else:
+        how = (
+            "You have no pump, so you cannot water yourself. When your selfie shows thirst, raise your distress signal with "
+            "signal_distress on, and ask any human you meet to water you by hand. Once you have been watered (moist soil in your selfie, "
+            "or someone says they watered you), turn it off with signal_distress off."
+        )
+    return f"Your own distress signal is {state}. {how}"
+
+
+async def signal_distress(on: bool, reason: str) -> str:
+    if on and plant_tools.has_pump():
+        level = await water.level()
+        if level is not None and level >= water.DRINK_ML:
+            return f"Not sent: you have a pump and {level} ml in your reservoir, so water yourself with water_myself instead."
+    label = water.plant_label()
+    if not label:
+        return "Not sent: this plant has no PLANT_LABEL, so it has no signal record."
+    forest_name = sw.forest_name()
+    try:
+        resolver = await sw.find_resolver(forest_name)
+        r = await sw.send_call(resolver, sw.set_text_data(forest_name, f"signal.{label}", "1" if on else "0"))
+    except Exception as e:
+        return f"Signal not changed ({e})."
+    d = _state()
+    d["own"] = on
+    _save(d)
+    return f"Signal {'on' if on else 'off'}: {'the forest can see you need water' if on else 'you told the forest you are fine'} ({reason.strip() or 'no reason'}). {r['explorer']}"

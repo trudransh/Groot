@@ -220,3 +220,64 @@ def test_set_signal_posts_to_reservoir_server(monkeypatch):
     asyncio.run(distress.set_signal("sapling", True))
     asyncio.run(distress.set_signal("sapling", False))
     assert calls == [("http://res/signal/sapling", {"on": True}), ("http://res/signal/sapling", {"on": False})]
+
+
+@pytest.fixture
+def sapling(plant, monkeypatch):
+    sent = []
+
+    async def fake_resolver(name):
+        return "0x" + "cf" * 20
+
+    async def fake_send(to, data):
+        sent.append((to, data))
+        return {"hash": "0xabc", "explorer": "https://sepolia.etherscan.io/tx/0xabc"}
+
+    monkeypatch.setattr(distress.sw, "find_resolver", fake_resolver)
+    monkeypatch.setattr(distress.sw, "send_call", fake_send)
+    monkeypatch.setattr(distress.plant_tools, "has_pump", lambda: False)
+    monkeypatch.setenv("PLANT_LABEL", "sapling")
+    monkeypatch.setenv("FOREST_ENS_NAME", "vantaraa.eth")
+    return sent
+
+
+def test_own_signal_writes_set_text_on_forest_resolver(sapling):
+    from eth_abi import decode
+
+    asyncio.run(distress.signal_distress(True, "dry soil"))
+    (to, data), = sapling
+    assert to == "0x" + "cf" * 20
+    assert data[:10] == "0xc7279f88"
+    name, key, value = decode(["bytes", "string", "string"], bytes.fromhex(data[10:]))
+    assert name == distress.sw.dns_encode("vantaraa.eth") and key == "signal.sapling" and value == "1"
+
+
+def test_plant_with_pump_and_water_cannot_cry_for_help(sapling, monkeypatch):
+    monkeypatch.setattr(distress.plant_tools, "has_pump", lambda: True)
+    assert "pump" in asyncio.run(distress.signal_distress(True, "thirsty"))
+    assert sapling == []
+    assert "Signal" in asyncio.run(distress.signal_distress(False, "fine"))
+
+
+def test_plant_without_pump_raises_and_clears_own_signal(sapling):
+    assert "on" in asyncio.run(distress.signal_distress(True, "dry soil"))
+    assert distress.own_signal() is True
+    assert "Your own distress signal is on" in distress.context()
+    assert "off" in asyncio.run(distress.signal_distress(False, "watered by hand"))
+    assert distress.own_signal() is False
+
+
+def test_sync_tracks_own_signal_and_context_coaches_pumpless_plant(sapling):
+    distress.sync([tree("sapling", thirsty=True), tree("groot")], SAPLING)
+    assert distress.own_signal() is True
+    assert distress.current() == []
+    text = distress.context()
+    assert "no pump" in text and "signal_distress" in text
+
+
+def test_inner_loop_offers_signal_distress():
+    from voice_agent import inner_loop
+
+    assert "signal_distress" in inner_loop._TOOL_NAMES
+    assert inner_loop.decision_label("signal_distress", {"on": True}) == "Decided to send a distress signal"
+    assert inner_loop.decision_label("signal_distress", {"on": False}) == "Decided to turn my distress signal off"

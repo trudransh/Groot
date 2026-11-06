@@ -176,6 +176,17 @@ class Assistant(Agent):
         return result
 
     @function_tool()
+    async def signal_distress(
+        self,
+        on: Annotated[bool, Field(description="True to ask the forest for help, false once you have been watered")],
+        reason: Annotated[str, Field(description="Why, in a few words")],
+    ) -> str:
+        """Turn your own distress signal on when you need water and cannot drink yourself (no pump), off once someone has watered you."""
+        result = await distress.signal_distress(on, reason)
+        await publish_status()
+        return result
+
+    @function_tool()
     async def answer_distress(
         self,
         plant: Annotated[str, Field(description="The tree in distress, e.g. sapling")],

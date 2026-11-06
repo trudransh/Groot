@@ -145,7 +145,7 @@ def watering_summary() -> str:
     )
 
 
-TOOL_NAMES = ["take_selfie", "see_selfie", "record_leaves", "watering_history", "my_reservoir", "water_myself", "offer_refill", "reservoir_refilled", "check_refill", "record_manual_watering", "answer_distress", "sleep"]
+TOOL_NAMES = ["take_selfie", "see_selfie", "record_leaves", "watering_history", "my_reservoir", "water_myself", "offer_refill", "reservoir_refilled", "check_refill", "record_manual_watering", "signal_distress", "answer_distress", "sleep"]
 
 
 def status() -> dict:

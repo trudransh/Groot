@@ -177,11 +177,37 @@ async def transfer(to_name: str, amount: str, *, verified_address: str | None = 
     return {**await _send(address, amount), "to": name, "address": address}
 
 
+FIND_RESOLVER_SELECTOR = keccak(text="findResolver(bytes)")[:4]
+SET_TEXT_SELECTOR = keccak(text="setText(bytes,string,string)")[:4]
+
+
+def set_text_data(name: str, key: str, value: str) -> str:
+    return "0x" + (SET_TEXT_SELECTOR + encode(["bytes", "string", "string"], [dns_encode(name), key, value])).hex()
+
+
+async def find_resolver(name: str) -> str:
+    data = FIND_RESOLVER_SELECTOR + encode(["bytes"], [dns_encode(name)])
+    async with httpx.AsyncClient(timeout=15) as http:
+        out = str(await _rpc(http, "eth_call", [{"to": universal_resolver(), "data": "0x" + data.hex()}, "latest"]))
+    (address, _, _) = decode(["address", "bytes32", "uint256"], bytes.fromhex(out.removeprefix("0x")))
+    return to_checksum_address(address)
+
+
+async def send_call(to: str, data: str) -> dict:
+    tx_hash = await _sign_and_send({"to": to_checksum_address(to), "value": 0, "data": data})
+    return {"hash": tx_hash, "explorer": f"{EXPLORER}/tx/{tx_hash}"}
+
+
 async def _send(to: str, amount: str) -> dict:
     token = USDC
     value = base_units(amount, token["decimals"])
-    account = Account.from_key(_key())
     call = {"to": to_checksum_address(token["address"]), "value": 0, "data": transfer_data(to, value)}
+    tx_hash = await _sign_and_send(call)
+    return {"hash": tx_hash, "explorer": f"{EXPLORER}/tx/{tx_hash}", "sent": f"{amount} USDC", "to": to}
+
+
+async def _sign_and_send(call: dict) -> str:
+    account = Account.from_key(_key())
     async with httpx.AsyncClient(timeout=30) as http:
         nonce = int(str(await _rpc(http, "eth_getTransactionCount", [account.address, "pending"])), 16)
         gas = int(str(await _rpc(http, "eth_estimateGas", [{"from": account.address, "to": call["to"], "value": hex(call["value"]), "data": call["data"]}])), 16)
@@ -190,5 +216,4 @@ async def _send(to: str, amount: str) -> dict:
         base_fee = int(block["baseFeePerGas"], 16)  # type: ignore[index]
         tx = {**call, "chainId": CHAIN_ID, "nonce": nonce, "gas": gas, "maxPriorityFeePerGas": tip, "maxFeePerGas": base_fee * 2 + tip, "type": 2}
         signed = account.sign_transaction(tx)
-        tx_hash = str(await _rpc(http, "eth_sendRawTransaction", ["0x" + signed.raw_transaction.hex().removeprefix("0x")]))
-    return {"hash": tx_hash, "explorer": f"{EXPLORER}/tx/{tx_hash}", "sent": f"{amount} USDC", "to": to}
+        return str(await _rpc(http, "eth_sendRawTransaction", ["0x" + signed.raw_transaction.hex().removeprefix("0x")]))

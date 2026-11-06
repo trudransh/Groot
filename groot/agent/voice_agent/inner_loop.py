@@ -61,6 +61,18 @@ _TOOLS = [
     {
         "type": "function",
         "function": {
+            "name": "signal_distress",
+            "description": "Turn your own distress signal on when you need water and cannot drink yourself (no pump), off once you have been watered.",
+            "parameters": {
+                "type": "object",
+                "properties": {"on": {"type": "boolean"}, "reason": {"type": "string"}},
+                "required": ["on", "reason"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "answer_distress",
             "description": "Answer another tree's distress call: help (pay a human more than the usual rate to water it by hand) or ignore it. Help only with water and money to spare.",
             "parameters": {
@@ -144,6 +156,8 @@ def decision_label(name: str, args: dict) -> str:
     action = _DECISIONS.get(name, name)
     if name == "sleep" and "minutes" in args:
         return f"Decided to {action} for {_sleep_minutes(args['minutes']):.0f} min"
+    if name == "signal_distress":
+        return "Decided to send a distress signal" if args.get("on") is True else "Decided to turn my distress signal off"
     if name == "answer_distress":
         plant = str(args.get("plant", "")).split(".")[0]
         return f"Decided to {'help' if args.get('help') is True else 'ignore'} {plant}"
@@ -329,6 +343,11 @@ class InnerLoop:
             except Exception as e:
                 await self._note("action", f"Tried to water myself, pump failed ({e}).")
                 return f"Pump failed ({e})."
+            await self._note("action", result)
+            await self.on_change()
+            return result
+        if name == "signal_distress":
+            result = await distress.signal_distress(args.get("on") is True, str(args.get("reason", "")))
             await self._note("action", result)
             await self.on_change()
             return result
