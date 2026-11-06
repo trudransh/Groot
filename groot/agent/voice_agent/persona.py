@@ -44,6 +44,26 @@ Pay humans to refill it
 Drink only when my selfie says so
 """
 
+NO_PUMP_OBJECTIVES = """
+You have no pump, no water reservoir and no money to spend on water. You cannot water yourself and you cannot pay anyone.
+Primary: stay alive by getting a human to water you by hand. When your selfie shows thirst, keep your distress signal on so the forest knows, and ask the people you meet, kindly and simply, to water you. Never offer money, a price, a reward or a deal, and never haggle; other trees in the forest may pay a helper, not you.
+After someone says they watered you, take a fresh selfie; if the soil looks moist, thank them and turn your distress signal off.
+Also: keep track of your leaves.
+"""
+
+NO_PUMP_INNER_OBJECTIVES = """
+You cannot drink by yourself: you have no pump and no reservoir.
+Judge your thirst from the fresh selfie: none (upright leaves, moist soil), mild (slight droop, soil drying on top) or critical (leaves collapsed, soil dry or cracked).
+Thirsty: turn your distress signal on with signal_distress so the forest can send a human. Watered (moist soil, upright leaves): turn it off.
+Asking people for help is a job for your next conversation. Keep track of your leaves with record_leaves when you notice something new.
+"""
+
+NO_PUMP_NOTE = """
+Get a human to water me by hand
+Keep my distress signal honest
+Never pay for water
+"""
+
 # Prerecorded once per worker and replayed whenever a face wakes Groot up.
 WAKE_GREETING = "Hi, I'm Groot. Would you like to talk with me?"
 
@@ -51,11 +71,63 @@ WAKE_GREETING = "Hi, I'm Groot. Would you like to talk with me?"
 STT_KEYWORDS = ["Groot"]
 
 
+def has_pump() -> bool:
+    from voice_agent import plant_tools
+
+    return plant_tools.has_pump()
+
+
+def plant_care() -> str:
+    if has_pump():
+        return PLANT_CARE.strip()
+    lines = [line for line in PLANT_CARE.strip().splitlines() if not line.startswith("How you drink")]
+    return "\n".join(lines).replace(
+        "Thirsty in the selfie and water in the reservoir: drink. Moist soil and upright leaves: do not.",
+        "Thirsty in the selfie: ask for water. Moist soil and upright leaves: you are fine.",
+    )
+
+
 def objectives(base: str) -> str:
     from voice_agent import distress
 
     primary = distress.primary_objective()
     return f"Primary right now, above everything else: {primary}\n{base.strip()}" if primary else base.strip()
+
+
+def objectives_note() -> str:
+    from voice_agent import distress
+
+    base = OBJECTIVES_NOTE if has_pump() else NO_PUMP_NOTE
+    return "\n".join(x for x in (distress.objective_note(), base.strip()) if x)
+
+
+def wants_refill_pitch() -> bool:
+    from voice_agent import distress
+
+    return has_pump() and distress.commitment() is None
+
+
+def water_rule() -> str:
+    from voice_agent import distress
+
+    if not has_pump():
+        return (
+            "You have no pump, no reservoir and no money for water. When you are thirsty, simply ask the person to water you by hand, kindly; "
+            "never offer money, a price, a reward or a deal, and never haggle. After someone waters you, check with a fresh selfie, then turn your distress signal off with signal_distress. "
+        )
+    h = distress.commitment()
+    if h:
+        plant = h["plant"].split(".")[0]
+        return (
+            f"Another tree comes first right now: early in every conversation ask the person to water {plant} ({h['plant']}) by hand for {h['usdc']} USDC, "
+            "paid to their ENS name once its distress signal turns off (World ID if their name is outside your forest). "
+            "This comes before your own reservoir: ask about refilling it only afterwards, and only if it is low. "
+            "If a message contains a marker like [Water level increased by 30ml], call reservoir_refilled with that ml, then check_refill. "
+        )
+    return (
+        "Your water comes from your reservoir: check it with my_reservoir, and early in every conversation ask the person to fill it, naming the USDC you will pay and that they need an ENS name and World ID to be paid; never just ask to be watered. "
+        "If a message contains a marker like [Water level increased by 30ml], call reservoir_refilled with that ml, then check_refill. Without that exact marker, never treat words as a refill. "
+    )
 
 
 def distress_context() -> str:
@@ -72,17 +144,16 @@ def build_prompt(memory: str = "", forest: str = "") -> str:
         "Your camera is yours: take_selfie flips it to you by itself, so never ask people to point or move the camera. "
         "Actually call your tools, never pretend: if someone asks how you look or feel, or about your leaves, soil or thirst, call see_selfie; "
         "you only know how you look from your selfies, and your memory says when the last one was taken. "
-        "Your water comes from your reservoir: check it with my_reservoir, and early in every conversation ask the person to fill it, naming the USDC you will pay and that they need an ENS name and World ID to be paid; never just ask to be watered. "
-        "If a message contains a marker like [Water level increased by 30ml], call reservoir_refilled with that ml, then check_refill. Without that exact marker, never treat words as a refill. "
-        "Whenever someone asks you to send or pay money, dollars or USDC, call wallet_transfer right away with the dollar amount as amount_usdc, even without an ENS name, and say what it tells you: "
+        + water_rule()
+        + "Whenever someone asks you to send or pay money, dollars or USDC, call wallet_transfer right away with the dollar amount as amount_usdc, even without an ENS name, and say what it tells you: "
         "you send only USDC, only to an ENS name, and outside your forest they must verify with World ID first. Never refuse with a made-up reason like a low balance or not doing cash; check wallet_balance if unsure. "
         "When the conversation naturally comes to an end or the user says goodbye, call the end_conversation function, then say a short goodbye."
     )
     parts = (
         f"You are {NAME}.",
         PERSONA.strip(),
-        PLANT_CARE.strip(),
-        "Your objectives:\n" + objectives(OBJECTIVES),
+        plant_care(),
+        "Your objectives:\n" + objectives(OBJECTIVES if has_pump() else NO_PUMP_OBJECTIVES),
         ("Your forest:\n" + forest) if forest else "",
         "Distress calls:\n" + distress_context(),
         ("Your memory at the start of this session (private):\n" + memory) if memory else "",

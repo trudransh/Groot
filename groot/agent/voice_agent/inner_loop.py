@@ -14,7 +14,7 @@ from livekit import rtc
 
 from voice_agent import diary, distress, forest, plant_state, plant_tools, wallet, water, zero_g
 from voice_agent.logger import get_logger
-from voice_agent.persona import INNER_OBJECTIVES, NAME, PERSONA, PLANT_CARE, distress_context, objectives
+from voice_agent.persona import INNER_OBJECTIVES, NAME, NO_PUMP_INNER_OBJECTIVES, PERSONA, distress_context, has_pump, objectives, plant_care
 
 logger = get_logger()
 
@@ -108,18 +108,31 @@ _TOOLS = [
 _TOOL_NAMES = [t["function"]["name"] for t in _TOOLS]
 
 
+def _how_to_act() -> str:
+    if has_pump():
+        return (
+            "Live like a person: notice how you feel, decide whether anything needs doing, do it with your tools, "
+            "then sleep. Act with tool calls, never only words: if your selfie shows thirst and your reservoir has water, call water_myself; "
+            f"each drink is {water.DRINK_ML} ml. "
+        )
+    return (
+        "Live like a person: notice how you feel, decide whether anything needs doing, do it with your tools, "
+        "then sleep. Act with tool calls, never only words: you have no pump, so if your selfie shows thirst, turn your distress signal on with signal_distress, "
+        "and turn it off once your selfie shows moist soil. "
+    )
+
+
 def _prompt(forest_context: str = "") -> str:
     return "\n\n".join(
         (
             f"You are {NAME}, alone with your thoughts. This is your inner voice, not a conversation: nobody hears it.",
             PERSONA.strip(),
-            PLANT_CARE.strip(),
-            "Your objectives right now:\n" + objectives(INNER_OBJECTIVES),
+            plant_care(),
+            "Your objectives right now:\n" + objectives(INNER_OBJECTIVES if has_pump() else NO_PUMP_INNER_OBJECTIVES),
             *((("Your forest:\n" + forest_context),) if forest_context else ()),
             "Distress calls:\n" + distress_context(),
-            "Live like a person: notice how you feel, decide whether anything needs doing, do it with your tools, "
-            "then sleep. Act with tool calls, never only words: if your selfie shows thirst and your reservoir has water, call water_myself; "
-            f"each drink is {water.DRINK_ML} ml. You only know how you look from your selfie, which is taken and read for you each time you wake; trust it and do not ask for another. "
+            _how_to_act()
+            + "You only know how you look from your selfie, which is taken and read for you each time you wake; trust it and do not ask for another. "
             f"Right now you can only use these tools: {', '.join(_TOOL_NAMES)}. "
             "Deals with people (offer_refill, check_refill, wallet_transfer, haggling) happen only in conversations, never here; plan them for the next visitor. "
             "Every thought is at most two short sentences in your fast-talking comic voice, in English; never repeat yourself. "
@@ -128,10 +141,10 @@ def _prompt(forest_context: str = "") -> str:
     )
 
 
-_ACT = (
-    "Do not just think it, act on it now with a tool call. Thirsty and your reservoir has water? Call water_myself. "
-    "Nothing to do? Call sleep."
-)
+def act_hint() -> str:
+    if has_pump():
+        return "Do not just think it, act on it now with a tool call. Thirsty and your reservoir has water? Call water_myself. Nothing to do? Call sleep."
+    return "Do not just think it, act on it now with a tool call. Thirsty? Call signal_distress. Nothing to do? Call sleep."
 
 
 def _tool_args(raw: object) -> dict | None:
@@ -288,7 +301,7 @@ class InnerLoop:
                     await self._note("decision", "Thought", thought=thought, ms=ms)
                     await self._mind("awake", "Thought", kind="decision", thought=thought, ms=ms)
                 messages.append({"role": "assistant", "content": thought})
-                messages.append({"role": "user", "content": _ACT})
+                messages.append({"role": "user", "content": act_hint()})
                 continue
             messages.append(msg.model_dump(exclude_none=True))
             for i, call in enumerate(msg.tool_calls):

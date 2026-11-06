@@ -21,7 +21,7 @@ from voice_agent.persona import (
     STT_KEYWORDS,
 )
 from voice_agent.assistant import Assistant, handle_text_input, prewarm, publish_status
-from voice_agent.persona import build_prompt
+from voice_agent.persona import build_prompt, wants_refill_pitch
 from voice_agent import diary, distress, forest, plant_state, plant_tools, wallet, water, zero_g
 from voice_agent.inner_loop import InnerLoop
 from voice_agent.presence import PRESENCE_TOPIC, go_dormant, prerecord_greeting, publish_state, wake
@@ -60,11 +60,12 @@ async def _forest() -> str:
     except Exception as e:
         logger.warning("Forest lookup failed: %s", e)
         trees = []
-    try:
-        refill = await asyncio.wait_for(water.pitch(), timeout=8)
-    except Exception as e:
-        logger.warning("Reservoir lookup failed: %s", e)
-        refill = ""
+    refill = ""
+    if wants_refill_pitch():
+        try:
+            refill = await asyncio.wait_for(water.pitch(), timeout=8)
+        except Exception as e:
+            logger.warning("Reservoir lookup failed: %s", e)
     context = forest.context(trees, forest.sw.forest_name(), wallet.ens_name())
     return f"{context}\n\nYour water deal right now: {refill}" if refill else context
 

@@ -150,12 +150,12 @@ TOOL_NAMES = ["take_selfie", "see_selfie", "record_leaves", "watering_history", 
 
 def status() -> dict:
     from voice_agent import distress, plant_tools, wallet
-    from voice_agent.persona import OBJECTIVES_NOTE
+    from voice_agent.persona import objectives_note
 
     state = load()
     last_leaf = state["leaf_checks"][-1] if state["leaf_checks"] else None
     return {
-        "objectives": "\n".join(x for x in (distress.objective_note(), OBJECTIVES_NOTE.strip()) if x),
+        "objectives": objectives_note(),
         "plantsInDistress": distress.current(),
         "hasPump": plant_tools.has_pump(),
         "distressOn": distress.own_signal(),

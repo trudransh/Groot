@@ -139,7 +139,8 @@ def context() -> str:
         head = (
             "These trees in your forest are signalling distress right now. You may ignore a call or act on it. "
             f"Act only if you have water and money to spare (at least {MIN_SPARE_RESERVOIR_ML} ml in your reservoir and the USDC for the reward). "
-            f"Acting means paying a human more than the usual {standard_rate()} USDC to water that tree by hand."
+            f"Acting means paying a human more than the usual {standard_rate()} USDC to water that tree by hand. "
+            "When you have water to spare, a tree in distress comes before buying water for yourself: decide on it first."
         )
         text = head + "\n" + "\n".join(lines)
     else:

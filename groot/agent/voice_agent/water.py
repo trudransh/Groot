@@ -170,7 +170,10 @@ async def _drink(run_pump, critical: bool) -> str:
 
 
 async def offer_refill(ml: int, usdc: float) -> str:
-    from voice_agent import plant_state
+    from voice_agent import plant_state, plant_tools
+
+    if not plant_tools.has_pump():
+        return "Offer not made: you have no pump or reservoir, and you never pay for water. Just ask them to water you by hand."
 
     ml_now = await level()
     err = offer_error(ml, usdc, ml_now, base_price_per_litre())
