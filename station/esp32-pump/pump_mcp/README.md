@@ -19,6 +19,9 @@ Errors (unreachable device, 400, 401) come back as tool errors with the message.
 | `PUMP_URL` | `http://172.20.10.2` | ESP32 IP, or a Cloudflare Tunnel URL |
 | `PUMP_TOKEN` | none | Same value as `API_TOKEN` in the sketch. Required for `pump_run` / `pump_stop` |
 | `PUMP_TIMEOUT_MS` | `5000` | HTTP timeout |
+| `RESERVOIR_URL` | none | Reservoir server (`scripts/ens`, `pnpm reservoir`). After each `pump_run` it posts `/use/<PLANT_LABEL>` to lower the level |
+| `PLANT_LABEL` | none | The plant's label under the forest, e.g. `groot` |
+| `PUMP_ML_PER_SECOND` | `20` | Pump flow, used to work out the ml drawn per run |
 
 The machine running the server must reach `PUMP_URL`: either on the same network as the ESP32, or via a tunnel URL.
 

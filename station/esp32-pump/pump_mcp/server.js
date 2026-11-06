@@ -9,6 +9,26 @@ import { z } from "zod";
 const BASE = (process.env.PUMP_URL || "http://172.20.10.2").replace(/\/+$/, "");
 const TOKEN = process.env.PUMP_TOKEN || "";
 const TIMEOUT_MS = Number(process.env.PUMP_TIMEOUT_MS || 5000);
+const RESERVOIR_URL = (process.env.RESERVOIR_URL || "").replace(/\/+$/, "");
+const PLANT_LABEL = (process.env.PLANT_LABEL || "").trim().toLowerCase();
+const ML_PER_SECOND = Number(process.env.PUMP_ML_PER_SECOND || 20);
+
+async function drainReservoir(seconds) {
+  if (!RESERVOIR_URL || !PLANT_LABEL) return { skipped: "RESERVOIR_URL or PLANT_LABEL not set" };
+  const ml = Math.round(seconds * ML_PER_SECOND);
+  try {
+    const res = await fetch(`${RESERVOIR_URL}/use/${PLANT_LABEL}`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ ml }),
+      signal: AbortSignal.timeout(120000),
+    });
+    const body = await res.json().catch(() => ({}));
+    return res.ok ? { usedMl: ml, ...body } : { usedMl: ml, error: body.error || `HTTP ${res.status}` };
+  } catch (e) {
+    return { usedMl: ml, error: `reservoir unreachable (${e.message})` };
+  }
+}
 
 async function call(path, { auth = false, method = "GET" } = {}) {
   const headers = {};
@@ -51,13 +71,16 @@ server.registerTool(
     title: "Run pump",
     description:
       "Turn the water pump on for N seconds (1-60), then it turns off automatically. " +
-      "Calling again while running resets the timer, but the device hard-caps any continuous run at 60s.",
+      "Calling again while running resets the timer, but the device hard-caps any continuous run at 60s. " +
+      "Each run draws seconds x PUMP_ML_PER_SECOND ml from the plant's reservoir and lowers its level.",
     inputSchema: { seconds: z.number().int().min(1).max(60).describe("Run time in seconds, 1-60") },
     annotations: { destructiveHint: false, idempotentHint: false },
   },
   async ({ seconds }) => {
-    try { return ok(await call(`/pump?seconds=${seconds}`, { auth: true, method: "POST" })); }
+    let pump;
+    try { pump = await call(`/pump?seconds=${seconds}`, { auth: true, method: "POST" }); }
     catch (e) { return fail(e); }
+    return ok({ ...pump, reservoir: await drainReservoir(seconds) });
   }
 );
 
