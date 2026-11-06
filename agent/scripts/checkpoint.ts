@@ -10,7 +10,7 @@ import { deliverWater } from '../src/pump/deliver.js'
 import { McpPump } from '../src/pump/mcp.js'
 import type { CheckpointContext } from '../src/types.js'
 
-const ZERO_G_COIN_TYPE = 2147500309n
+const ZERO_G_COIN_TYPE = 0x80000000n | BigInt(process.env.ZERO_G_CHAIN_ID || 16661)
 
 function need(name: string): string {
   const v = process.env[name]
