@@ -4,7 +4,8 @@
   "type": "module",
   "scripts": {
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "checkpoint": "node --no-network-family-autoselection --env-file-if-exists=.env --import tsx scripts/checkpoint.ts"
   },
   "devDependencies": {
     "@types/node": "^26.6.6",
