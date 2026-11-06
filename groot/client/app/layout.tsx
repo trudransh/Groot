@@ -6,7 +6,7 @@ import { inter } from './fonts/fonts';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: personaConfig.appName,
+  title: process.env.NEXT_PUBLIC_ENS_NAME || personaConfig.appName,
   description: personaConfig.description,
   icons: {
     icon: [

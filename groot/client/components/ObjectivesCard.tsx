@@ -1,6 +1,7 @@
 'use client';
 
 import clsx from 'clsx';
+import { GROOT } from '@/config/agents.config';
 import { Children, ReactNode, useRef, useState } from 'react';
 
 // Mirrors plant_state.status() in agent/voice_agent/plant_state.py.
@@ -12,6 +13,8 @@ export interface PlantStatus {
   leafCount: number | null;
   selfieAt: string | null;
   tools: string[];
+  walletAddress: string | null;
+  ensName: string | null;
 }
 
 export interface Selfie {
@@ -131,7 +134,7 @@ export function SelfieCard({ selfie }: { selfie: Selfie | null }) {
     <div className={`${CARD} bg-[#171D21]`}>
       {selfie ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={selfie.image} alt="Groot's latest selfie" className="h-full w-full object-cover" />
+        <img src={selfie.image} alt={`${GROOT.name} latest selfie`} className="h-full w-full object-cover" />
       ) : (
         <p className="flex h-full items-center justify-center p-2 text-center font-inter text-[13px] text-white/70">No selfie yet</p>
       )}
@@ -167,10 +170,17 @@ export function MemoryCard({ status }: { status: PlantStatus | null }) {
   );
 }
 
-export function WalletCard() {
+export function WalletCard({ address, ensName }: { address: string | null | undefined; ensName?: string | null }) {
   return (
     <Card title="Wallet">
-      <p className="text-[#8E989C]">Coming soon</p>
+      {ensName && <p className="mb-1 font-semibold">{ensName}</p>}
+      {address ? (
+        <p className="break-all font-mono text-[11px]" title={address}>
+          {address}
+        </p>
+      ) : (
+        <p className="text-[#8E989C]">No wallet set</p>
+      )}
     </Card>
   );
 }

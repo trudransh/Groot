@@ -266,5 +266,7 @@ def run_from_cli() -> None:
             num_idle_processes=0,
             load_threshold=0.6,
             job_memory_limit_mb=800,
+            # Health/debug HTTP port; give each local instance its own.
+            port=int(os.environ.get("AGENT_HTTP_PORT", "8081")),
         )
     )

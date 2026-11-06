@@ -128,6 +128,7 @@ TOOL_NAMES = ["take_selfie", "see_selfie", "record_leaves", "watering_history", 
 
 
 def status() -> dict:
+    from voice_agent import wallet
     from voice_agent.persona import OBJECTIVES_NOTE
 
     state = load()
@@ -140,4 +141,6 @@ def status() -> dict:
         "leafCount": last_leaf["count"] if last_leaf else None,
         "selfieAt": selfie_at(),
         "tools": TOOL_NAMES,
+        "walletAddress": wallet.address(),
+        "ensName": wallet.ens_name(),
     }

@@ -8,12 +8,15 @@ export interface HomeAgent {
 }
 
 const { english } = personaConfig.moods;
+// Set per instance by run-two.sh, e.g. groot.vantaraa.eth.
+const ensName = process.env.NEXT_PUBLIC_ENS_NAME;
+const name = ensName || personaConfig.heroTitle;
 
 export const GROOT: HomeAgent = {
   slug: 'groot',
-  name: personaConfig.heroTitle,
+  name,
   subtitle: english.heroSubtitle,
-  startLabel: english.startChatButtonLabel,
+  startLabel: 'Start',
 };
 
 export const firstName = (agent: HomeAgent) => agent.name.split(' ')[0];

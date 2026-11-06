@@ -3,6 +3,8 @@
 const embedOrigins = process.env.EMBED_ALLOWED_ORIGINS ?? '';
 
 const nextConfig = {
+  // Separate build dir per instance so two dev servers can run side by side.
+  distDir: process.env.NEXT_DIST_DIR || '.next',
   async headers() {
     return [
       {

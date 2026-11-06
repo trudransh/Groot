@@ -2,6 +2,7 @@ import { AgentAudioVisualizerRadial } from '@/components/AgentAudioVisualizerRad
 import { DiaryDialog, type DiaryEntry } from '@/components/DiaryDialog';
 import { MicDialogState, MicPermissionDialog, micPermission } from '@/components/MicPermissionDialog';
 import { NoAgentNotification } from '@/components/NoAgentNotification';
+import { GROOT } from '@/config/agents.config';
 import { CardStack, ForestCard, Sidebar, MemoryCard, SelfieCard, ToolsCard, WalletCard, type PlantStatus, type Selfie } from '@/components/ObjectivesCard';
 import TranscriptionView from '@/components/TranscriptionView';
 import { MicIcon } from '@/components/icons/MicIcon';
@@ -342,7 +343,7 @@ export function VoiceAssistant({
           <DiaryDialog entries={diary} />
         </CardStack>
         <CardStack tabs={['Wallet', 'Forest']}>
-          <WalletCard />
+          <WalletCard address={plantStatus?.walletAddress} ensName={plantStatus?.ensName} />
           <ForestCard />
         </CardStack>
       </Sidebar>
@@ -369,7 +370,7 @@ function CameraPreview({
   return (
     <div
       className="relative h-full w-full overflow-hidden rounded-xl bg-[#171D21] shadow-sm"
-      title={error ?? (dormant ? 'Resting: look at the camera to wake Groot' : 'Awake')}
+      title={error ?? (dormant ? `Resting: look at the camera to wake ${GROOT.name}` : 'Awake')}
     >
       <video ref={videoRef} muted playsInline className={clsx('h-full w-full object-cover', facing === 'user' && '-scale-x-100')} />
       {error && <p className="absolute inset-0 flex items-center justify-center p-2 text-center text-[10px] text-white">{error}</p>}

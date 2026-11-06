@@ -11,6 +11,8 @@ import { motion } from 'framer-motion';
 import { nyghtMedium } from './fonts/fonts';
 
 const mood = AgentMoodEnum.ENGLISH;
+// Set per instance by run-two.sh, e.g. groot.vantaraa.eth.
+const ENS_NAME = process.env.NEXT_PUBLIC_ENS_NAME;
 
 export default function HomePage() {
   const { room, status, error, start, reset } = useTalkSession();
@@ -38,7 +40,8 @@ export default function HomePage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
             className={clsx(
-              'text-[#3F8F4E] leading-[0.9] tracking-[0.04em] text-6xl md:text-[clamp(4.5rem,11dvh,7rem)]',
+              'text-[#3F8F4E] leading-[0.9] tracking-[0.04em] break-all',
+              ENS_NAME ? 'text-4xl md:text-[clamp(3rem,7dvh,4.5rem)]' : 'text-6xl md:text-[clamp(4.5rem,11dvh,7rem)]',
               nyghtMedium.className
             )}
           >

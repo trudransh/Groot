@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { Card, ago } from '@/components/ObjectivesCard';
+import { GROOT } from '@/config/agents.config';
 
 // Mirrors diary.write() in agent/voice_agent/diary.py.
 export interface DiaryEntry {
@@ -46,12 +47,12 @@ export function DiaryDialog({ entries }: { entries: DiaryEntry[] }) {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setOpen(false)}>
           <div
             role="dialog"
-            aria-label="Groot's diary"
+            aria-label={`${GROOT.name} diary`}
             className="flex max-h-[80vh] w-full max-w-lg flex-col rounded-lg bg-[#FFFBEA] font-inter text-[#3B3320] shadow-xl"
             onClick={e => e.stopPropagation()}
           >
             <div className="flex items-center justify-between border-b border-[#E8DFB8] px-4 py-3">
-              <p className="font-semibold">Groot&apos;s diary</p>
+              <p className="font-semibold">{GROOT.name} diary</p>
               <button onClick={() => setOpen(false)} className="text-sm text-[#6B5E3A] hover:text-[#3B3320]">
                 Close
               </button>
