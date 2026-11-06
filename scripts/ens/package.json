@@ -7,7 +7,8 @@
     "break:fork": "node --no-network-family-autoselection --env-file-if-exists=.env --import tsx break-fork.ts",
     "signal": "node --no-network-family-autoselection --env-file-if-exists=.env --import tsx send-signal.ts",
     "read": "node --no-network-family-autoselection --env-file-if-exists=.env --import tsx read.ts",
-    "deploy-forest": "node --no-network-family-autoselection --env-file-if-exists=.env --import tsx setup.ts"
+    "deploy-forest": "node --no-network-family-autoselection --env-file-if-exists=.env --import tsx setup.ts",
+    "describe": "node --no-network-family-autoselection --env-file-if-exists=.env --import tsx describe.ts"
   },
   "dependencies": {
     "viem": "^2.57.16"
