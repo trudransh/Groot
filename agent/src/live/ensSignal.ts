@@ -15,7 +15,7 @@ export function ensSignal(agentKey: Hex, rpcUrl: string, forestName: string, pla
   const account = privateKeyToAccount(agentKey)
   const pub = createPublicClient({ chain: sepolia, transport })
   const wallet = createWalletClient({ chain: sepolia, transport, account })
-  return async (status: SignalStatus): Promise<Hex> => {
+  const write = async (status: SignalStatus): Promise<Hex> => {
     const resolver = await pub.getEnsResolver({ name: forestName })
     const hash = await wallet.writeContract({
       address: resolver,
@@ -27,4 +27,9 @@ export function ensSignal(agentKey: Hex, rpcUrl: string, forestName: string, pla
     if (r.status !== 'success') throw new Error(`ENS signal reverted ${hash}`)
     return hash
   }
+  const read = async (): Promise<SignalStatus | undefined> => {
+    const value = await pub.getEnsText({ name: forestName, key: `signal.${plantLabel}` })
+    return value === '1' ? 'thirsty' : value === '0' ? 'ok' : undefined
+  }
+  return Object.assign(write, { read })
 }

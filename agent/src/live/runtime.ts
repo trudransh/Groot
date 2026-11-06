@@ -64,6 +64,7 @@ export function buildRuntimes(env: Env): Map<string, PlantRuntime> {
     let mlInWindow = 0
     let lastWateredTs: number | undefined
 
+    const signal = ensSignal(key, sepoliaRpc, forestName, label)
     plants.set(label, {
       lastStatus: undefined,
       context(moisture, now): CheckpointContext {
@@ -110,7 +111,8 @@ export function buildRuntimes(env: Env): Map<string, PlantRuntime> {
         minConfidence: Number(env.MIN_CONFIDENCE || 0.6),
         minWaterGapS: Number(env.MIN_WATER_GAP_S || 600),
       },
-      signal: ensSignal(key, sepoliaRpc, forestName, label),
+      signal,
+      currentSignal: signal.read,
       delivered(ml, now) {
         mlInWindow += ml
         lastWateredTs = now

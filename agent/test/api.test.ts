@@ -116,6 +116,28 @@ describe('POST /water', () => {
   })
 })
 
+describe('signal state after a restart', () => {
+  it('reads the live signal before the first write and skips it when unchanged', async () => {
+    const { rt } = runtime()
+    rt.currentSignal = vi.fn(async () => 'ok' as const)
+    const api = createApi({ plants: new Map([['groot', rt]]), now: () => 1000 })
+    const r = await api.signal({ plant: 'groot', status: 'ok' })
+    expect(r.body).toMatchObject({ status: 'ok', txHash: null, unchanged: true })
+    expect(rt.signal).not.toHaveBeenCalled()
+    await api.signal({ plant: 'groot', status: 'thirsty' })
+    expect(rt.signal).toHaveBeenCalledWith('thirsty')
+    expect(rt.currentSignal).toHaveBeenCalledTimes(1)
+  })
+
+  it('still writes when the live signal cannot be read', async () => {
+    const { rt } = runtime()
+    rt.currentSignal = vi.fn(async () => Promise.reject(new Error('rpc down')))
+    const api = createApi({ plants: new Map([['groot', rt]]), now: () => 1000 })
+    await api.signal({ plant: 'groot', status: 'ok' })
+    expect(rt.signal).toHaveBeenCalledWith('ok')
+  })
+})
+
 describe('POST /signal', () => {
   it('writes the status and returns the tx hash', async () => {
     const { rt } = runtime()

@@ -69,6 +69,7 @@ const pump = process.env.PUMP_URL
 const handled = new Set<string>()
 
 const writeSignal = ensSignal(agentKey, sepoliaRpc, forestName, label)
+let liveSignal = await writeSignal.read().catch(() => undefined)
 
 const r = await runCheckpoint(
   {
@@ -85,14 +86,18 @@ const r = await runCheckpoint(
           console.log('pump', d)
         }
       : undefined,
-    signal: (status) => writeSignal(status === 'ok' ? 'ok' : 'thirsty'),
+    signal: async (status) => {
+      const next = status === 'ok' ? 'ok' : 'thirsty'
+      if (next === liveSignal) return
+      await writeSignal(next)
+      liveSignal = next
+    },
     onError: (stage, e) => console.error(`[${stage}]`, e instanceof Error ? e.message : e),
     now: () => now,
     minConfidence: Number(process.env.MIN_CONFIDENCE || 0.6),
     minWaterGapS: Number(process.env.MIN_WATER_GAP_S || 600),
   },
   ctx,
-  process.env.LAST_STATUS as never,
 )
 
 console.log(JSON.stringify({ status: r.status, ...r.summary, reading: r.record.inputs.reading, zeroG: r.record.zeroG }, null, 2))

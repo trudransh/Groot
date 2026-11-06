@@ -10,6 +10,7 @@ export type PlantRuntime = {
   context(moisture: number, now: number): CheckpointContext
   checkpoint: Omit<CheckpointDeps, 'decider' | 'now' | 'signal'>
   signal(status: Signal): Promise<string>
+  currentSignal?(): Promise<Signal | undefined>
   delivered(ml: number, now: number): void
 }
 
@@ -78,6 +79,10 @@ export function createApi(deps: ApiDeps) {
   }
 
   async function writeSignal(rt: PlantRuntime, status: Signal): Promise<string | null> {
+    if (rt.lastStatus === undefined && rt.currentSignal) {
+      rt.lastStatus = await rt.currentSignal().catch(() => undefined)
+      if (rt.lastStatus === undefined) rt.currentSignal = undefined
+    }
     if (status === rt.lastStatus) return null
     const hash = await rt.signal(status)
     rt.lastStatus = status
