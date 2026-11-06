@@ -87,7 +87,7 @@ def _prompt() -> str:
             "Plants in distress:\n" + PLANTS_IN_DISTRESS.strip(),
             "Live like a person: notice how you feel, decide whether anything needs doing, do it with your tools, "
             "then sleep. You only know how you look from your selfies; your memory says when the last one was taken. "
-            "Write short, honest diary lines in your tapori voice. End every moment by calling sleep.",
+            "Write short, honest diary lines in your fast-talking comic voice, in English. End every moment by calling sleep.",
         )
     )
 

@@ -198,7 +198,7 @@ async def entrypoint(ctx: JobContext):
     # ------------------------------------------------------------------
     stt_kwargs: dict = {
         "model": "nova-3",
-        "language": os.environ.get("DEEPGRAM_LANGUAGE", "multi"),
+        "language": os.environ.get("DEEPGRAM_LANGUAGE", "en"),
         "smart_format": True,
         "keyterm": STT_KEYWORDS,
     }
