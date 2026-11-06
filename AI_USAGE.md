@@ -15,3 +15,4 @@ ETHGlobal requires this disclosure. We fill it in as we build, not at the end.
 | Fri 06 Nov 10:30 | .claude/agents, docs/ORCHESTRATION.md | Coding-agent roles and loop, drafted with Claude Code | | |
 | Fri 06 Nov | station/esp32-pump/ | ESP32 pump firmware (`pump_wifi`), its README, and the MCP server (`pump_mcp`), generated with Claude Code from our spec | Hardware wiring, WiFi config | Tested on device (all HTTP routes, pump run under water) |
 | Fri 06 Nov | agent/src/decider, agent/src/pump | 0G `ZeroGDecider` and broker adapter, pump delivery rules and MCP client, with tests, drafted with Claude Code | | |
+| Sat 07 Nov | agent/src/checkpoint.ts, agent/src/api, agent/src/live, scripts/ens | Checkpoint pipeline, /water and /signal service, 0G Storage and PlantWallet adapters, ENS forest scripts, with tests, drafted with Claude Code | | Rudransh (live runs on Sepolia and 0G) |

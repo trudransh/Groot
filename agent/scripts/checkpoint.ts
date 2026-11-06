@@ -68,6 +68,8 @@ const pump = process.env.PUMP_URL
   : null
 const handled = new Set<string>()
 
+const writeSignal = ensSignal(agentKey, sepoliaRpc, forestName, label)
+
 const r = await runCheckpoint(
   {
     decider: new ZeroGDecider(routerPort(need('ZG_API_KEY'), process.env.ZG_BASE_URL || undefined, process.env.ZG_MODEL || undefined), { timeoutMs: 30000 }),
@@ -83,7 +85,7 @@ const r = await runCheckpoint(
           console.log('pump', d)
         }
       : undefined,
-    signal: ensSignal(agentKey, sepoliaRpc, forestName, label),
+    signal: (status) => writeSignal(status === 'ok' ? 'ok' : 'thirsty'),
     onError: (stage, e) => console.error(`[${stage}]`, e instanceof Error ? e.message : e),
     now: () => now,
     minConfidence: Number(process.env.MIN_CONFIDENCE || 0.6),

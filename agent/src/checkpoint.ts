@@ -16,8 +16,8 @@ export type CheckpointDeps = {
   decider: Decider
   store: RecordStore
   wallet: PlantWalletPort
-  water?: (orderId: bigint, ml: number) => Promise<void>
-  signal?: (status: PlantStatus) => Promise<void>
+  water?: (orderId: bigint, ml: number) => Promise<unknown>
+  signal?: (status: PlantStatus) => Promise<unknown>
   onError?: (stage: string, e: unknown) => void
   now: () => number
   minConfidence: number
