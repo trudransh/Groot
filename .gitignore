@@ -1,0 +1,24 @@
+.env
+*.env
+!.env.example
+node_modules/
+.next/
+out/
+dist/
+cache/
+broadcast/
+contracts/out/
+__pycache__/
+*.pyc
+.venv/
+station/state/
+episodes/*.local.json
+.DS_Store
+
+# Windows download artifacts
+*:Zone.Identifier
+
+# local tooling state
+.claude-flow/
+.swarm/
+.claude/settings.local.json

@@ -1,0 +1,18 @@
+{
+  "name": "sapling-saved-by-the-forest",
+  "note": "Starting state for the stage demo. Balances in wei; 1e16 = 0.01 0G. Only simulated plants are set from here; real plants keep their measured moisture.",
+  "plants": [
+    { "label": "banyan-01", "mode": "simulated", "moisture": 0.55, "balanceWei": "50000000000000000", "reserveWei": "10000000000000000" },
+    { "label": "neem-02", "mode": "simulated", "moisture": 0.5, "balanceWei": "30000000000000000", "reserveWei": "10000000000000000" },
+    { "label": "aloe-03", "mode": "simulated", "moisture": 0.45, "balanceWei": "20000000000000000", "reserveWei": "10000000000000000" },
+    { "label": "tulsi-04", "mode": "simulated", "moisture": 0.15, "balanceWei": "10000000000000", "reserveWei": "0" },
+    { "label": "mint-05", "mode": "simulated", "moisture": 0.3, "balanceWei": "200000000000000", "reserveWei": "0" },
+    { "label": "fern-06", "mode": "simulated", "moisture": 0.4, "balanceWei": "15000000000000000", "reserveWei": "5000000000000000" }
+  ],
+  "beats": [
+    "tulsi-04 is dry and holds less than one order's cost, so its checkpoint turns water into ask_help (cannot_afford_water)",
+    "banyan-01 sees the open request and gives within 25% of its surplus",
+    "tulsi-04 orders water with the gift; WaterOrdered confirms; moisture rises",
+    "mint-05 asks next; aloe-03 reluctantly gives a small amount"
+  ]
+}
