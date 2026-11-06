@@ -82,6 +82,15 @@ type DecisionRecord = {
     giftedInWindowWei: string
     openHelpRequests: { id: number; plantName: string; amountWei: string; filledWei: string }[]
     ownOpenRequestId: number   // 0 when none
+    limits?: {                 // what the rules ran with, so a record can be replayed
+      waterPriceWeiPerMl: string
+      maxWaterMlPerOrder: number
+      waterMlToday: number
+      maxWaterMlPerDay: number
+      shareLimitBps: number
+      minConfidence: number
+      minWaterGapS: number
+    }
   }
   zeroG: {
     provider: `0x${string}`
@@ -98,6 +107,7 @@ type DecisionRecord = {
 
 - The frame is uploaded separately and referenced by `frameRoot`.
 - The record's 0G Storage root hash is the `root` passed to every contract call for that checkpoint.
+- Replay: download the record by its root, rebuild the context from `inputs`, run the rules on `decision` at `ts`, and compare with `finalDecision` and `rulesApplied`. `pnpm replay <root>` in `agent/` does this.
 
 ## 6. Contracts (0G mainnet, Solidity ^0.8.24, Foundry)
 
