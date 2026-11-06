@@ -9,7 +9,7 @@ Vocabulary follows `GLOSSARY.md`. Decisions behind these shapes are in `docs/adr
 | Thing | Value |
 |---|---|
 | Money, decisions, contracts | 0G mainnet, chain ID `16661`, RPC `https://evmrpc.0g.ai`, explorer `https://chainscan.0g.ai` |
-| 0G Storage indexer | `https://indexer-storage-turbo.0g.ai` (UNVERIFIED: confirm in the 0G mainnet docs) |
+| 0G Storage indexer | `https://indexer-storage-turbo.0g.ai` |
 | Names | Ethereum Sepolia, ENS v2 (2026-09-15 redeploy) |
 | ENS address record for a plant wallet | ENSIP-11 coin type `2147500309` (`0x80000000 | 16661`) |
 
@@ -193,7 +193,7 @@ On each plant name (`<label>.ourforest.eth`), served by its own Permissioned Res
 | `forest.stage` | guardian | `sapling`, `growing` or `mature` |
 | `forest.mode` | guardian | `real` or `simulated` |
 | `forest.persona` | guardian | the persona text, at most 400 characters |
-| `forest.status` | plant agent | `ok`, `thirsty`, `asking`, `giving` or `safe_stop` |
+| `forest.status` | plant agent | `ok`, `thirsty` (the distress signal), `giving` or `safe_stop` |
 | `forest.decision` | plant agent | root hash of the latest decision record |
 | `avatar`, `description` | guardian | standard ENS keys |
 
@@ -219,7 +219,7 @@ The plant agent's key is granted `ROLE_SET_TEXT` only for `forest.status` and `f
 type PlantView = {
   name: string; wallet: `0x${string}`; mode: PlantMode; stage: string; persona: string
   balanceWei: string; reserveWei: string; moisture: number | null
-  status: 'ok' | 'thirsty' | 'asking' | 'giving' | 'safe_stop'
+  status: 'ok' | 'thirsty' | 'giving' | 'safe_stop'
   lastDecision: DecisionSummary | null
 }
 type DecisionSummary = { checkpointId: string; ts: number; action: Action; reason: string
