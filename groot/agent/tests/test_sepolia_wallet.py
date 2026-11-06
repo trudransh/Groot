@@ -78,9 +78,9 @@ def wallet(monkeypatch):
     monkeypatch.setenv("FOREST_ENS_NAME", "vantaraa.eth")
     sent = []
 
-    async def fake_send(address, amount, symbol):
-        sent.append((address, amount, symbol))
-        return {"hash": "0xh", "explorer": "x", "sent": f"{amount} {symbol}", "to": address}
+    async def fake_send(address, amount):
+        sent.append((address, amount))
+        return {"hash": "0xh", "explorer": "x", "sent": f"{amount} USDC", "to": address}
 
     async def fake_resolve(name):
         return {"tulsi-04.vantaraa.eth": SOMEONE, "alice.eth": SOMEONE}.get(name)
@@ -91,37 +91,37 @@ def wallet(monkeypatch):
 
 
 def test_transfer_to_forest_plant_needs_no_verification(wallet):
-    r = asyncio.run(sw.transfer("tulsi-04.vantaraa.eth", "1", "USDC"))
-    assert wallet == [(SOMEONE, "1", "USDC")]
+    r = asyncio.run(sw.transfer("tulsi-04.vantaraa.eth", "1"))
+    assert wallet == [(SOMEONE, "1")]
     assert r["to"] == "tulsi-04.vantaraa.eth"
 
 
 def test_transfer_outside_forest_needs_world_id(wallet):
     with pytest.raises(PermissionError):
-        asyncio.run(sw.transfer("alice.eth", "1", "USDC"))
+        asyncio.run(sw.transfer("alice.eth", "1"))
     assert wallet == []
 
 
 def test_transfer_outside_forest_with_matching_verification(wallet):
-    asyncio.run(sw.transfer("alice.eth", "1", "USDC", verified_address=SOMEONE))
-    assert wallet == [(SOMEONE, "1", "USDC")]
+    asyncio.run(sw.transfer("alice.eth", "1", verified_address=SOMEONE))
+    assert wallet == [(SOMEONE, "1")]
 
 
 def test_transfer_refuses_when_name_moved_after_verification(wallet):
     with pytest.raises(PermissionError):
-        asyncio.run(sw.transfer("alice.eth", "1", "USDC", verified_address="0x" + "33" * 20))
+        asyncio.run(sw.transfer("alice.eth", "1", verified_address="0x" + "33" * 20))
     assert wallet == []
 
 
 def test_transfer_refuses_raw_address(wallet):
     with pytest.raises(ValueError):
-        asyncio.run(sw.transfer(SOMEONE, "1", "ETH", verified_address=SOMEONE))
+        asyncio.run(sw.transfer(SOMEONE, "1", verified_address=SOMEONE))
     assert wallet == []
 
 
 def test_transfer_refuses_unresolved_name(wallet):
     with pytest.raises(ValueError):
-        asyncio.run(sw.transfer("ghost.vantaraa.eth", "1", "ETH"))
+        asyncio.run(sw.transfer("ghost.vantaraa.eth", "1"))
     assert wallet == []
 
 
@@ -133,3 +133,61 @@ def test_world_approval_matches_only_exact_approved_request():
     assert not wa.matches({**pending, "status": "pending"}, pending)
     assert not wa.matches({**pending, "status": "approved", "amount": "100"}, pending)
     assert not wa.matches({**pending, "status": "approved", "address": "0x" + "33" * 20}, pending)
+
+
+@pytest.mark.parametrize("recipient", ["me", "", "0x" + "22" * 20])
+def test_mcp_transfer_without_ens_name_explains_the_rules(wallet, recipient):
+    from voice_agent import wallet_mcp
+
+    reply = asyncio.run(wallet_mcp.wallet_transfer(recipient, "1"))
+    assert "ENS name" in reply and "World ID" in reply and "USDC" in reply
+    assert wallet == []
+
+
+def test_mcp_transfer_has_no_token_choice():
+    import inspect
+
+    from voice_agent import wallet_mcp
+
+    assert list(inspect.signature(wallet_mcp.wallet_transfer).parameters) == ["recipient_ens_name", "amount_usdc"]
+
+
+def _fake_chains(monkeypatch, sepolia, mainnet):
+    calls = []
+
+    async def fake_resolve_on(rpc, name):
+        calls.append(rpc)
+        return (sepolia if rpc == sw.rpc_url() else mainnet).get(name)
+
+    monkeypatch.setattr(sw, "_resolve_on", fake_resolve_on)
+    return calls
+
+
+def test_outside_names_fall_back_to_mainnet_ens(monkeypatch):
+    _fake_chains(monkeypatch, {}, {"tumbuh.eth": SOMEONE})
+    assert asyncio.run(sw.resolve_name("tumbuh.eth")) == SOMEONE
+
+
+def test_sepolia_record_wins_over_mainnet(monkeypatch):
+    other = "0x" + "33" * 20
+    _fake_chains(monkeypatch, {"alice.eth": other}, {"alice.eth": SOMEONE})
+    assert asyncio.run(sw.resolve_name("alice.eth")) == other
+
+
+def test_forest_names_never_resolve_on_mainnet(monkeypatch):
+    monkeypatch.setenv("FOREST_ENS_NAME", "vantaraa.eth")
+    calls = _fake_chains(monkeypatch, {}, {"fake.vantaraa.eth": SOMEONE})
+    assert asyncio.run(sw.resolve_name("fake.vantaraa.eth")) is None
+    assert calls == [sw.rpc_url()]
+
+
+def test_mcp_transfer_reports_unreachable_world_id_app(wallet, monkeypatch):
+    from voice_agent import wallet_mcp, world_approval
+
+    async def down(**kwargs):
+        raise RuntimeError("530")
+
+    monkeypatch.setattr(world_approval, "request", down)
+    reply = asyncio.run(wallet_mcp.wallet_transfer("alice.eth", "1"))
+    assert "World ID" in reply and "Nothing was sent" in reply and "not reachable" in reply
+    assert wallet == []

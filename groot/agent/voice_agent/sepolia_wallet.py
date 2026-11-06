@@ -77,8 +77,8 @@ def own_address() -> str:
     return Account.from_key(_key()).address
 
 
-async def _rpc(http: httpx.AsyncClient, method: str, params: list) -> object:
-    res = await http.post(rpc_url(), json={"jsonrpc": "2.0", "id": 1, "method": method, "params": params})
+async def _rpc(http: httpx.AsyncClient, method: str, params: list, url: str | None = None) -> object:
+    res = await http.post(url or rpc_url(), json={"jsonrpc": "2.0", "id": 1, "method": method, "params": params})
     res.raise_for_status()
     body = res.json()
     if "error" in body:
@@ -129,13 +129,24 @@ def coin_type(chain_id: int) -> int:
     return 0x80000000 | chain_id
 
 
+def mainnet_rpc_url() -> str:
+    return os.environ.get("ENS_MAINNET_RPC_URL", "https://ethereum-rpc.publicnode.com")
+
+
 async def resolve_name(name: str) -> str | None:
+    address = await _resolve_on(rpc_url(), name)
+    if address or in_forest(name):
+        return address
+    return await _resolve_on(mainnet_rpc_url(), name)
+
+
+async def _resolve_on(rpc: str, name: str) -> str | None:
     async with httpx.AsyncClient(timeout=15) as http:
         for coin in (coin_type(CHAIN_ID), ETH_COIN_TYPE, coin_type(ZERO_G_CHAIN_ID)):
             query = ADDR_SELECTOR + encode(["bytes32", "uint256"], [namehash(name), coin])
             call = RESOLVE_SELECTOR + encode(["bytes", "bytes"], [dns_encode(name), query])
             try:
-                out = str(await _rpc(http, "eth_call", [{"to": universal_resolver(), "data": "0x" + call.hex()}, "latest"]))
+                out = str(await _rpc(http, "eth_call", [{"to": universal_resolver(), "data": "0x" + call.hex()}, "latest"], rpc))
                 result, _ = decode(["bytes", "address"], bytes.fromhex(out.removeprefix("0x")))
                 (raw,) = decode(["bytes"], result)
             except Exception:
@@ -145,7 +156,7 @@ async def resolve_name(name: str) -> str | None:
     return None
 
 
-async def transfer(to_name: str, amount: str, symbol: str = "ETH", *, verified_address: str | None = None) -> dict:
+async def transfer(to_name: str, amount: str, *, verified_address: str | None = None) -> dict:
     name = normalize_name(to_name)
     address = await resolve_name(name)
     if not address:
@@ -157,14 +168,14 @@ async def transfer(to_name: str, amount: str, symbol: str = "ETH", *, verified_a
             raise PermissionError(f"{name} is outside the {forest_name()} forest. Its owner must verify with World ID first.")
         if to_checksum_address(verified_address) != address:
             raise PermissionError(f"{name} now points to a different address than the one verified with World ID. Nothing was sent.")
-    return {**await _send(address, amount, symbol), "to": name, "address": address}
+    return {**await _send(address, amount), "to": name, "address": address}
 
 
-async def _send(to: str, amount: str, symbol: str) -> dict:
-    token = pick_token(symbol)
-    value = base_units(amount, token["decimals"] if token else ETH_DECIMALS)
+async def _send(to: str, amount: str) -> dict:
+    token = USDC
+    value = base_units(amount, token["decimals"])
     account = Account.from_key(_key())
-    call = {"to": to_checksum_address(token["address"]), "value": 0, "data": transfer_data(to, value)} if token else {"to": to, "value": value, "data": "0x"}
+    call = {"to": to_checksum_address(token["address"]), "value": 0, "data": transfer_data(to, value)}
     async with httpx.AsyncClient(timeout=30) as http:
         nonce = int(str(await _rpc(http, "eth_getTransactionCount", [account.address, "pending"])), 16)
         gas = int(str(await _rpc(http, "eth_estimateGas", [{"from": account.address, "to": call["to"], "value": hex(call["value"]), "data": call["data"]}])), 16)
@@ -174,4 +185,4 @@ async def _send(to: str, amount: str, symbol: str) -> dict:
         tx = {**call, "chainId": CHAIN_ID, "nonce": nonce, "gas": gas, "maxPriorityFeePerGas": tip, "maxFeePerGas": base_fee * 2 + tip, "type": 2}
         signed = account.sign_transaction(tx)
         tx_hash = str(await _rpc(http, "eth_sendRawTransaction", ["0x" + signed.raw_transaction.hex().removeprefix("0x")]))
-    return {"hash": tx_hash, "explorer": f"{EXPLORER}/tx/{tx_hash}", "sent": f"{amount} {token['symbol'] if token else 'ETH'}", "to": to}
+    return {"hash": tx_hash, "explorer": f"{EXPLORER}/tx/{tx_hash}", "sent": f"{amount} USDC", "to": to}
