@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Deploy `Forest` and one `PlantWallet` per plant to the 0G testnet, enforcing the forest rules in code, with every test in the spec green.
+**Goal:** Deploy `Forest` and one `PlantWallet` per plant to 0G mainnet, enforcing the forest rules in code, with every test in the spec green.
 
 **Architecture:**
 - `Forest` holds rules, registered plant wallets, the supplier and help requests.
@@ -15,7 +15,7 @@
 
 ## Global Constraints
 
-- Chain: 0G Galileo testnet, chain ID 16602, RPC from `contracts/.env` (`RPC_URL`), never hard-coded.
+- Chain: 0G mainnet, chain ID 16661, RPC from `contracts/.env` (`RPC_URL`), never hard-coded.
 - Money is the native token. No ERC-20.
 - Defaults at deploy:
   - `waterPriceWeiPerMl` = 1e12
@@ -24,7 +24,7 @@
   - `maxWaterMlPerDay` = 500
 - `Action` encoding: water 0, wait 1, ask_help 2, give 3.
 - No proxies, no upgradeability.
-- Single-line comments only, and only where needed.
+- No code comments, ever (see AGENTS.md).
 - Commit after each task, one feature per commit, under the human's own git identity. No AI co-author lines.
 
 ## Review Focus
@@ -127,10 +127,10 @@
 - Produces:
   - `guardianWithdraw(address to, uint256 amountWei)`, reverting on `to == address(0)`.
   - The deploy script reads `GUARDIAN_EXECUTOR`, `SUPPLIER`, `PLANT_AGENTS` (comma-separated addresses) and `PLANT_RESERVES_WEI` from the environment.
-  - It writes `contracts/deployments/16602.json`: `{ forest, plants: [{ agent, wallet, reserveWei }] }`.
+  - It writes `contracts/deployments/16661.json`: `{ forest, plants: [{ agent, wallet, reserveWei }] }`.
 
 - [ ] **Step 1: Write the failing tests** `test_guardianWithdraw_onlyGuardian`, `test_guardianWithdraw_zeroAddress_reverts` (Review Focus 5), `test_guardianWithdraw_moves`.
 - [ ] **Step 2: Run.** Expected: FAIL.
 - [ ] **Step 3: Implement** `guardianWithdraw` and the deploy script. The script deploys, then calls `registerPlant` for each wallet from the guardian executor.
-- [ ] **Step 4: Run** `forge test -vv`, then `forge script script/Deploy.s.sol --rpc-url $RPC_URL --broadcast`. Expected: all tests PASS; `deployments/16602.json` written; every address has code (`cast code <addr> --rpc-url $RPC_URL` is not `0x`).
-- [ ] **Step 5: Commit** `feat(contracts): guardian withdraw and testnet deploy`. Add the addresses to the README in the same commit.
+- [ ] **Step 4: Run** `forge test -vv`, then `forge script script/Deploy.s.sol --rpc-url $RPC_URL --broadcast`. Expected: all tests PASS; `deployments/16661.json` written; every address has code (`cast code <addr> --rpc-url $RPC_URL` is not `0x`).
+- [ ] **Step 5: Commit** `feat(contracts): guardian withdraw and mainnet deploy`. Add the addresses to the README in the same commit.
