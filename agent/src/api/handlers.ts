@@ -18,7 +18,7 @@ export type HttpResult = { code: number; body: unknown }
 
 export const UNMEASURED_MOISTURE = 0.35
 const ZERO_ADDRESS: Hex = '0x0000000000000000000000000000000000000000'
-const DEFAULT_MODEL = 'qwen3-omni-flash'
+const DEFAULT_MODEL = 'glm-5.3-flash'
 
 const isObject = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v)
 const text = (v: unknown, max = 200) => (typeof v === 'string' && v.trim() !== '' ? v.trim().slice(0, max) : null)
