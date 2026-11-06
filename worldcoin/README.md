@@ -6,7 +6,7 @@ Track: World ID Agent Pass. Contract side: `Forest.registerHuman` and `PlantWall
 
 ## Flow
 
-1. The plant shows a QR code for `/claim?claim=<id>`. The person enters a wallet address and taps **Verify with World ID**.
+1. The plant shows a QR code for `/claim?claim=<id>`. The person enters a wallet address or an ENS name and taps **Verify with World ID**. A name is resolved on the server, using its address record for `CHAIN_ID` (ENSIP-11) or else its Ethereum address, and shown for confirmation; the confirmed `0x` address is what the claim binds and registers, so a later change to the name's records cannot redirect the payout.
 2. `GET /api/claim/start` stores an attempt `{ state, nonce, PKCE verifier, claimId, address, startedAt }` for 10 minutes, sets a `claim_state` cookie, and redirects to World's authorize endpoint with `max_age=0`, `prompt=login` and `acr_values` from `WORLD_AUTH_ACR`.
 3. World returns to `GET /api/claim/callback`. The backend checks:
    - the attempt exists, is unexpired, is used once, and matches the cookie (same browser);
@@ -39,6 +39,7 @@ The forest address is read from `contracts/deployments/<CHAIN_ID>.json`. For a l
 | `WORLD_AUTH_CLIENT_ID`, `WORLD_AUTH_CLIENT_SECRET` | From the portal, auth method `client_secret_basic`. Leave the secret empty for a public client |
 | `WORLD_AUTH_REDIRECT_URI` | The exact HTTPS callback registered in the portal |
 | `WORLD_AUTH_ACR` | Accepted classes, comma separated. Sandbox: `https://world.org/oidc/acr/orb` |
+| `ENS_RPC_URL` | Ethereum mainnet RPC for resolving people's ENS names. Empty uses viem's default public RPC |
 | `CHAIN_ID`, `CHAIN_RPC_URL`, `GUARDIAN_EXECUTOR_KEY` | The chain where `Forest` is deployed and the guardian executor key that calls `registerHuman` |
 
 ## Testing in the sandbox

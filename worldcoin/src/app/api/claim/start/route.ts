@@ -1,12 +1,20 @@
 import { NextResponse, type NextRequest } from 'next/server'
+import { isAddress } from 'viem'
 import { ATTEMPT_TTL_S, authorizeUrl, newAttempt, validClaimId } from '@/lib/claim'
 import { authConfig, discovery, nowS, saveAttempt } from '@/lib/server'
 
 export async function GET(req: NextRequest) {
   const q = req.nextUrl.searchParams
   const claim = q.get('claim')
-  const a = newAttempt(claim, q.get('address'), nowS())
+  const wallet = (q.get('address') ?? '').trim()
   const cfg = authConfig()
+  if (validClaimId(claim) && !isAddress(wallet) && wallet.includes('.')) {
+    const confirm = new URL('/claim', cfg.redirectUri)
+    confirm.searchParams.set('claim', claim)
+    confirm.searchParams.set('name', wallet)
+    return NextResponse.redirect(confirm, 303)
+  }
+  const a = newAttempt(claim, wallet, nowS())
   if (!a) {
     const back = new URL('/claim', cfg.redirectUri)
     if (validClaimId(claim)) back.searchParams.set('claim', claim)

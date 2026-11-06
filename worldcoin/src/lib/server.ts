@@ -2,7 +2,8 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { createPublicClient, createWalletClient, defineChain, http, parseAbi } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
-import { ACR, ATTEMPT_TTL_S, ISSUER, type Attempt, type ClaimDeps } from './claim'
+import { mainnet } from 'viem/chains'
+import { ACR, ATTEMPT_TTL_S, ISSUER, type Attempt, type ClaimDeps, type EnsLookup } from './claim'
 
 export const env = (name: string) => {
   const v = process.env[name]
@@ -111,3 +112,10 @@ export const claimDeps = (): ClaimDeps => ({
   },
   registerHuman,
 })
+
+export const payoutChainId = () => Number(env('CHAIN_ID'))
+
+export const ensLookup: EnsLookup = (name, coinType) => {
+  const client = createPublicClient({ chain: mainnet, transport: http(process.env.ENS_RPC_URL || undefined) })
+  return client.getEnsAddress(coinType === undefined ? { name } : { name, coinType })
+}

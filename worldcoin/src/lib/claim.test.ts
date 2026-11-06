@@ -1,6 +1,7 @@
 import crypto from 'node:crypto'
 import { describe, expect, it, vi } from 'vitest'
-import { ACR, ISSUER, authorizeUrl, completeClaim, newAttempt, verifyIdToken, type Attempt, type ClaimDeps } from './claim'
+import { toCoinType } from 'viem/ens'
+import { ACR, ISSUER, authorizeUrl, completeClaim, newAttempt, resolveWallet, verifyIdToken, type Attempt, type ClaimDeps } from './claim'
 
 const ADDR = '0x9965507D1a55bcC2695C58ba16FB37d819B0A4dc'
 const OTHER = '0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65'
@@ -126,5 +127,43 @@ describe('completeClaim', () => {
     expect(await completeClaim(a, claims(a), d)).toEqual({ ok: false, error: 'register_failed' })
     d.registerHuman = vi.fn(async () => '0xtx2')
     expect(await completeClaim(a, claims(a), d)).toEqual({ ok: true, address: ADDR, txHash: '0xtx2' })
+  })
+})
+
+describe('resolveWallet', () => {
+  const ZERO_G = 16661
+  const records: Record<string, Record<string, string>> = {
+    'alice.eth': { eth: OTHER, zeroG: ADDR },
+    'bob.eth': { eth: OTHER },
+    'empty.eth': {},
+  }
+  const lookup = vi.fn(async (name: string, coinType?: bigint) => {
+    const r = records[name]
+    if (!r) return null
+    return (coinType === undefined ? r.eth : coinType === toCoinType(ZERO_G) ? r.zeroG : undefined) ?? null
+  })
+
+  it('passes a 0x address through without a lookup', async () => {
+    lookup.mockClear()
+    expect(await resolveWallet(ADDR, lookup, ZERO_G)).toEqual({ address: ADDR, via: 'address' })
+    expect(lookup).not.toHaveBeenCalled()
+  })
+
+  it('prefers the name record for the payout chain', async () => {
+    expect(await resolveWallet('Alice.eth', lookup, ZERO_G)).toEqual({ address: ADDR, via: 'ens-chain' })
+  })
+
+  it('falls back to the Ethereum address record', async () => {
+    expect(await resolveWallet('bob.eth', lookup, ZERO_G)).toEqual({ address: OTHER, via: 'ens-eth' })
+  })
+
+  it.each(['empty.eth', 'nobody.eth'])('returns null when %s has no address', async (name) => {
+    expect(await resolveWallet(name, lookup, ZERO_G)).toBeNull()
+  })
+
+  it.each(['not a name', 'eth', '0x123', ''])('rejects %j without a lookup', async (input) => {
+    lookup.mockClear()
+    expect(await resolveWallet(input, lookup, ZERO_G)).toBeNull()
+    expect(lookup).not.toHaveBeenCalled()
   })
 })
