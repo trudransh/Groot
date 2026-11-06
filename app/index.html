@@ -49,22 +49,23 @@ main { position: relative; z-index: 1; max-width: 1180px; margin: 0 auto; paddin
 .lvl { display: grid; place-items: center; width: 62px; height: 62px; flex: none; background: radial-gradient(circle at 35% 30%, #c9b6ff, #6c47ff 55%, #3a1fb0); border: 4px solid #1d0f5c;
   border-radius: 16px; transform: rotate(45deg); box-shadow: 0 5px 0 #1d0f5c; }
 .lvl span { transform: rotate(-45deg); font-family: 'Lilita One', cursive; color: #fff; font-size: 13px; text-align: center; line-height: 1.05; -webkit-text-stroke: 1px #1d0f5c; paint-order: stroke fill; }
-.status { position: absolute; z-index: 3; top: 92px; right: 14px; font-family: 'Lilita One', cursive; padding: 6px 12px; border-radius: 12px; border: 3px solid var(--ink); font-size: 15px; box-shadow: 0 4px 0 var(--ink); }
+.status { position: relative; z-index: 3; display: inline-block; margin: 12px 0 2px; font-family: 'Lilita One', cursive; padding: 6px 12px; border-radius: 12px; border: 3px solid var(--ink); font-size: 15px; box-shadow: 0 4px 0 var(--ink); }
 .status.ok { background: linear-gradient(#b6ff8f, #4cd137); }
 .status.thirsty { background: linear-gradient(#ffb3b3, var(--red)); color: #fff; animation: bob .7s ease-in-out infinite; }
 .status.unknown { background: #ddd; }
 @keyframes bob { 50% { transform: translateY(-5px) rotate(-3deg); } }
-.stage { position: relative; z-index: 1; display: grid; place-items: end center; min-height: 280px; margin-top: 4px; }
-pre.tree { margin: 0; font-family: 'JetBrains Mono', monospace; font-weight: 800; line-height: 1.02; font-size: clamp(11px, 2.05vw, 21px); text-align: left; filter: drop-shadow(0 6px 0 #0003);
-  transform-origin: 50% 100%; animation: sway 4.5s ease-in-out infinite; }
-.sapling pre.tree { font-size: clamp(17px, 3.1vw, 32px); animation-duration: 3.2s; }
-@keyframes sway { 0%, 100% { transform: rotate(-1.2deg); } 50% { transform: rotate(1.2deg); } }
-.l1 { color: var(--leaf1); } .l2 { color: var(--leaf2); } .l3 { color: var(--leaf3); } .tk { color: var(--trunk); } .fc { color: #fff; text-shadow: 0 0 6px #0008; }
-.gr { color: #2c7a17; } .fl { color: #ff5fa2; } .dr { color: var(--water); }
-.thirsty .l1, .thirsty .l2, .thirsty .l3 { color: #d9a441; } .thirsty pre.tree { animation-duration: 1.6s; }
-.drops { position: absolute; inset: 0; pointer-events: none; z-index: 2; }
-.drop { position: absolute; top: -20px; color: var(--water); font-family: 'JetBrains Mono', monospace; font-weight: 800; animation: fall 1.4s linear forwards; }
-@keyframes fall { to { transform: translateY(330px); opacity: .2; } }
+.world { position: relative; height: clamp(380px, 62vh, 640px); border: 5px solid var(--wood3); border-radius: 26px; overflow: hidden; margin-bottom: 22px;
+  box-shadow: inset 0 0 0 4px #ffffff55, 0 10px 0 var(--wood3), 0 18px 30px #0004; background: #9be7ff; touch-action: pan-y; }
+.world canvas { display: block; width: 100%; height: 100%; cursor: grab; }
+.world canvas:active { cursor: grabbing; }
+.labels { position: absolute; inset: 0; pointer-events: none; }
+.tag3d { position: absolute; transform: translate(-50%, -100%); text-align: center; white-space: nowrap; transition: opacity .2s; }
+.tag3d .n { font-family: 'Lilita One', cursive; font-size: clamp(16px, 2.6vw, 24px); color: #fff; -webkit-text-stroke: 2px var(--ink); paint-order: stroke fill; text-shadow: 0 3px 0 var(--ink); }
+.tag3d .s { display: inline-block; margin-top: 2px; font-family: 'Lilita One', cursive; font-size: 13px; padding: 2px 9px; border-radius: 10px; border: 2px solid var(--ink); box-shadow: 0 3px 0 var(--ink); }
+.tag3d .s.ok { background: linear-gradient(#b6ff8f, #4cd137); }
+.tag3d .s.thirsty { background: linear-gradient(#ffb3b3, var(--red)); color: #fff; animation: bob .7s ease-in-out infinite; }
+.tag3d .s.unknown { background: #ddd; }
+.hint { position: absolute; left: 50%; bottom: 10px; transform: translateX(-50%); background: #23140acc; color: #fff; font-weight: 800; font-size: 12px; padding: 5px 12px; border-radius: 999px; pointer-events: none; }
 .stats { position: relative; z-index: 2; display: grid; gap: 10px; margin-top: 10px; }
 .meter { position: relative; height: 28px; background: #1d2b3a; border: 3px solid var(--ink); border-radius: 14px; overflow: hidden; box-shadow: inset 0 3px 0 #0006; }
 .meter i { position: absolute; inset: 0 auto 0 0; background: linear-gradient(180deg, #8fd8ff, var(--water) 50%, var(--water2)); transition: width .8s; }
@@ -98,7 +99,7 @@ pre.tree { margin: 0; font-family: 'JetBrains Mono', monospace; font-weight: 800
 .muted { opacity: .75; }
 footer { text-align: center; color: #fff; font-weight: 800; margin: 22px auto 0; font-size: 13px; background: #23140acc; border-radius: 999px; padding: 8px 16px; width: fit-content; max-width: 100%; }
 footer a { color: var(--gold); }
-@media (max-width: 520px) { .stage { min-height: 210px; } .status { top: 84px; } .base { padding: 12px; } }
+@media (max-width: 520px) { .base { padding: 12px; } }
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; } }
 </style>
 </head>
@@ -117,6 +118,11 @@ footer a { color: var(--gold); }
     <div class="res"><span class="ico water">💧</span><span id="orders-total">… water orders</span></div>
     <div class="res"><span class="ico gem">◆</span><span id="decisions-total">… 0G decisions</span></div>
   </div>
+  <section class="world" id="world" aria-label="The forest in 3D">
+    <canvas></canvas>
+    <div class="labels"></div>
+    <div class="hint">drag to look around · tap a tree</div>
+  </section>
   <section class="field" id="field"></section>
   <section class="panel">
     <h2>Battle Log · decisions on 0G</h2>
@@ -129,13 +135,14 @@ footer a { color: var(--gold); }
   <footer>Open source · <a href="https://github.com/trudransh/Groot">github.com/trudransh/Groot</a> · ETHGlobal Mumbai 2026 · Sepolia ENS v2 + 0G Galileo + 0G Router</footer>
 </main>
 <div class="toast" id="toast"></div>
+<script type="importmap">{"imports":{"three":"https://unpkg.com/three@0.170.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.170.0/examples/jsm/"}}</script>
 <script type="module">
 import { createPublicClient, http, parseAbiItem, formatUnits } from 'https://esm.sh/viem@2.57.16'
 import { sepolia } from 'https://esm.sh/viem@2.57.16/chains'
+import { createWorld } from './world.js'
 
 const params = new URLSearchParams(location.search)
 const FOREST = params.get('forest') || 'vantaraa.eth'
-const AGENT = (params.get('agent') || '').replace(/\/+$/, '')
 const SEPOLIA_RPC = 'https://ethereum-sepolia-rpc.publicnode.com'
 const USDC = '0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238'
 const SEPOLIA_COIN = 0x80000000n | 11155111n
@@ -165,39 +172,6 @@ function toast(msg, ms = 4200) {
   clearTimeout(toast.t)
   toast.t = setTimeout(() => t.classList.remove('on'), ms)
 }
-
-const span = (cls, s) => `<span class="${cls}">${esc(s)}</span>`
-
-function grootArt(thirsty) {
-  const face = thirsty ? '( x _ x )' : '( ^ ‿ ^ )'
-  return [
-    `            ${span('l3', '.-~~~~~~~~-.')}`,
-    `       ${span('l1', '.-~~')}${span('l3', '  @  %  @  ')}${span('l1', '~~-.')}`,
-    `     ${span('l2', '.~')}${span('l1', '  @%@  ')}${span('fl', '*')}${span('l1', '  %@%  @  ')}${span('l2', '~.')}`,
-    `    ${span('l1', '(')}${span('l2', ' %@  ')}${span('l1', '@%@')}${span('fc', face)}${span('l1', '@%@ ')}${span('l2', ' %)')}`,
-    `     ${span('l2', '(')}${span('l1', '  @%@  %@%  ')}${span('fl', '*')}${span('l1', '  @%@  ')}${span('l2', ')')}`,
-    `      ${span('l2', "'~.")}${span('l1', '_ @%@ __ @%@ _')}${span('l2', ".~'")}`,
-    `          ${span('l2', "'-.")}${span('tk', '\\  ||  /')}${span('l2', ".-'")}`,
-    `               ${span('tk', '\\||/')}`,
-    `               ${span('tk', '|||| ')}`,
-    `               ${span('tk', '||||')}`,
-    `      ${span('gr', ',,')}${span('fl', '*')}${span('gr', ',,,')}${span('tk', '/|||\\')}${span('gr', ',,,')}${span('fl', '*')}${span('gr', ',,')}`,
-  ].join('\n')
-}
-
-function saplingArt(thirsty) {
-  const face = thirsty ? '(;-_-)' : '(•ᴗ•)'
-  return [
-    `        ${span('l3', '\\  |  /')}`,
-    `      ${span('l1', '.-')}${span('l3', '\\ | /')}${span('l1', '-.')}`,
-    `     ${span('l2', '(')}${span('l1', ' ~ ')}${span('fc', face)}${span('l1', ' ~')}${span('l2', ')')}`,
-    `      ${span('l2', "'-.")}${span('l1', '_v_')}${span('l2', ".-'")}`,
-    `         ${span('tk', '| |')}`,
-    `     ${span('gr', ',,')}${span('fl', '*')}${span('gr', ',')}${span('tk', '/| |\\')}${span('gr', ',')}${span('fl', '*')}${span('gr', ',,')}`,
-  ].join('\n')
-}
-
-const art = { groot: grootArt, sapling: saplingArt }
 
 async function text(name, key) {
   try { return (await ens.getEnsText({ name, key })) ?? '' } catch { return '' }
@@ -258,7 +232,6 @@ function renderPlant(p, usdc) {
   const thirsty = p.signal === '1'
   const status = p.signal === '1' ? ['thirsty', 'THIRSTY!'] : p.signal === '0' ? ['ok', 'HAPPY'] : ['unknown', 'NO SIGNAL']
   const level = p.reservoir === '' ? null : Math.max(0, Math.min(1000, Number(p.reservoir) || 0))
-  const draw = art[p.label] || (p.stage === 'sapling' ? saplingArt : grootArt)
   const stage = (p.stage || 'plant').toUpperCase()
   const el = document.createElement('article')
   el.className = `base ${p.label} ${thirsty ? 'thirsty' : ''}`
@@ -268,7 +241,6 @@ function renderPlant(p, usdc) {
       <div class="lvl"><span>${esc(stage.slice(0, 8))}</span></div>
     </div>
     <div class="status ${status[0]}">${status[1]}</div>
-    <div class="stage"><pre class="tree" aria-label="${esc(p.label)} as ASCII art">${draw(thirsty)}</pre><div class="drops"></div></div>
     <div class="stats">
       <div class="meter" title="reservoir.${esc(p.label)} on ${esc(FOREST)}"><i style="width:${level === null ? 0 : level / 10}%"></i><b>${level === null ? 'Reservoir: not set' : `Reservoir ${level} / 1000 ml`}</b></div>
       ${p.persona ? `<div class="persona">“${esc(p.persona)}”</div>` : ''}
@@ -279,42 +251,8 @@ function renderPlant(p, usdc) {
         ${p.plantWallet ? `<span class="chip">🏦 PlantWallet <a href="${p.zg.explorer}/address/${p.plantWallet}" target="_blank" rel="noopener">${short(p.plantWallet)}</a></span>` : ''}
         <span class="chip">📡 signal.${esc(p.label)} = ${esc(p.signal || '—')}</span>
       </div>
-      ${AGENT ? `<button class="btn blue" data-ask="${esc(p.label)}">💧 Ask ${esc(p.label)} to check its water</button>` : ''}
     </div>`
   return el
-}
-
-function rain(base) {
-  const box = base.querySelector('.drops')
-  for (let i = 0; i < 18; i++) {
-    const d = document.createElement('span')
-    d.className = 'drop'
-    d.textContent = i % 3 ? '|' : '💧'
-    d.style.left = `${10 + Math.random() * 80}%`
-    d.style.animationDelay = `${Math.random() * 0.9}s`
-    box.appendChild(d)
-    setTimeout(() => d.remove(), 2600)
-  }
-}
-
-async function ask(btn, label) {
-  btn.disabled = true
-  const old = btn.textContent
-  btn.textContent = '🧠 0G is deciding…'
-  try {
-    const res = await fetch(`${AGENT}/public/checkpoint/${encodeURIComponent(label)}`, { method: 'POST' })
-    const r = await res.json()
-    if (!res.ok) throw new Error(r.error || `HTTP ${res.status}`)
-    const base = btn.closest('.base')
-    if (r.action === 'water' && r.txHash) rain(base)
-    toast(`<b>${esc(label)}</b> decided <b>${esc(r.action)}</b> (${esc(r.status)}) · request ${esc(short(r.requestId, 8, 4))}${r.txHash ? ` · <a style="color:#ffd23f" target="_blank" rel="noopener" href="${r.explorer}/tx/${r.txHash}">tx</a>` : ''}<br><span class="muted">${esc(r.reason || '')}</span>`, 9000)
-    setTimeout(load, 4000)
-  } catch (e) {
-    toast(`Station offline or busy: ${esc(e.message)}. The table pump is only reachable while the team's laptop is on.`)
-  } finally {
-    btn.disabled = false
-    btn.textContent = old
-  }
 }
 
 function renderLog(events, zg) {
@@ -351,7 +289,7 @@ async function load() {
     field.innerHTML = ''
     f.plants.forEach((p, i) => field.appendChild(renderPlant(p, balances[i])))
     if (!f.plants.length) field.innerHTML = '<div class="panel"><h2>No plants found</h2>forest.plants is empty on this name.</div>'
-    field.querySelectorAll('[data-ask]').forEach((b) => b.addEventListener('click', () => ask(b, b.dataset.ask)))
+    world?.setPlants(f.plants)
     $('usdc-total').textContent = `${balances.reduce((s, b) => s + (b || 0), 0).toFixed(2)} USDC`
     renderProofs(f, zg)
     const events = (await Promise.all(f.plants.map((p) => history(zg, p)))).flat()
@@ -363,6 +301,8 @@ async function load() {
   }
 }
 
+let world = null
+try { world = createWorld(document.getElementById('world'), { onTap: (label) => toast(`<b>${esc(label)}</b> says hi! 🌱`, 2200) }) } catch { document.getElementById('world').remove() }
 load()
 setInterval(load, 60000)
 </script>
