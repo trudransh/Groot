@@ -30,9 +30,10 @@ export function plantsFromEnv(): Plant[] {
   const raw = process.env.PLANTS?.trim()
   if (!raw) return []
   return raw.split(',').map((entry) => {
-    const [label, agent, wallet] = entry.split(':').map((s) => s.trim())
+    const [label, agent, walletArg] = entry.split(':').map((s) => s.trim())
+    const wallet = walletArg || agent
     if (!label || !/^[a-z0-9-]+$/.test(label)) throw new Error(`bad plant label in PLANTS: ${entry}`)
-    if (!agent?.match(/^0x[0-9a-fA-F]{40}$/) || !wallet?.match(/^0x[0-9a-fA-F]{40}$/)) throw new Error(`PLANTS entry needs label:agentAddress:walletAddress, got ${entry}`)
+    if (!agent?.match(/^0x[0-9a-fA-F]{40}$/) || !wallet?.match(/^0x[0-9a-fA-F]{40}$/)) throw new Error(`PLANTS entry needs label:agentAddress[:walletAddress], got ${entry}`)
     return { label, agent: agent as Address, wallet: wallet as Address, persona: '', species: label.replace(/-\d+$/, '') }
   })
 }

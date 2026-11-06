@@ -46,7 +46,7 @@ async function expectRevert(name: string, c: Clients, address: Address, function
 const signalOf = async (forest: Forest, label: string) => (await readForest(pub as never, forest.name)).find((p) => p.label === label)?.signal
 
 try {
-  const forest = await createForest(guardian, 'vantaraa', 2_419_200n, async () => {
+  const forest = await createForest(guardian, `forest-check-${Date.now().toString(36)}`, 2_419_200n, async () => {
     await test.increaseTime({ seconds: 61 })
     await test.mine({ blocks: 1 })
   })
@@ -54,7 +54,7 @@ try {
   for (let i = 0; i < plants.length; i++) await addPlant(guardian, forest, plants[i]!, plants.slice(0, i + 1).map((p) => p.label))
 
   const view = await readForest(pub as never, forest.name)
-  check('discover plants and signals from vantaraa.eth', JSON.stringify(view) === JSON.stringify([{ label: 'banyan-01', signal: '0' }, { label: 'tulsi-04', signal: '0' }]), JSON.stringify(view))
+  check(`discover plants and signals from ${forest.name}`, JSON.stringify(view) === JSON.stringify([{ label: 'banyan-01', signal: '0' }, { label: 'tulsi-04', signal: '0' }]), JSON.stringify(view))
   const wallet = await pub.getEnsAddress({ name: `banyan-01.${forest.name}`, coinType: ZERO_G_COIN_TYPE })
   check('banyan-01.vantaraa.eth resolves to its 0G wallet', wallet?.toLowerCase() === plants[0]!.wallet, String(wallet))
   check('plant subdomain keeps its persona', (await pub.getEnsText({ name: `banyan-01.${forest.name}`, key: 'forest.persona' })) === 'calm elder')

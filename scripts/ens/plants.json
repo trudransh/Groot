@@ -1,0 +1,23 @@
+{
+  "forest": {
+    "description": "A forest of plant agents that share money instead of competing. Each plant decides on 0G, stores every decision on 0G Storage, and raises its distress signal here as signal.<plant> (1 thirsty, 0 ok).",
+    "url": "https://github.com/trudransh/Groot",
+    "zeroGChainId": 16602
+  },
+  "plants": {
+    "groot": {
+      "description": "Groot, a potted plant on the table with a camera, a pump and its own wallets: USDC on Sepolia, a PlantWallet on 0G.",
+      "persona": "A fast-talking, high-energy comic plant who hustles for its water with charm and never begs.",
+      "species": "groot",
+      "stage": "growing",
+      "mode": "real"
+    },
+    "sapling": {
+      "description": "Sapling, a young plant agent in the vantaraa forest that looks out for thirsty trees.",
+      "persona": "A young, eager plant that watches the forest's signals and helps a thirsty tree first.",
+      "species": "sapling",
+      "stage": "sapling",
+      "mode": "real"
+    }
+  }
+}

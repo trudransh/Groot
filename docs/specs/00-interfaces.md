@@ -82,6 +82,15 @@ type DecisionRecord = {
     giftedInWindowWei: string
     openHelpRequests: { id: number; plantName: string; amountWei: string; filledWei: string }[]
     ownOpenRequestId: number   // 0 when none
+    limits?: {                 // what the rules ran with, so a record can be replayed
+      waterPriceWeiPerMl: string
+      maxWaterMlPerOrder: number
+      waterMlToday: number
+      maxWaterMlPerDay: number
+      shareLimitBps: number
+      minConfidence: number
+      minWaterGapS: number
+    }
   }
   zeroG: {
     provider: `0x${string}`
@@ -98,6 +107,7 @@ type DecisionRecord = {
 
 - The frame is uploaded separately and referenced by `frameRoot`.
 - The record's 0G Storage root hash is the `root` passed to every contract call for that checkpoint.
+- Replay: download the record by its root, rebuild the context from `inputs`, run the rules on `decision` at `ts`, and compare with `finalDecision` and `rulesApplied`. `pnpm replay <root>` in `agent/` does this.
 
 ## 6. Contracts (0G mainnet, Solidity ^0.8.24, Foundry)
 
@@ -175,29 +185,29 @@ Rules the contracts enforce:
 
 ## 7. ENS records (Sepolia)
 
-On the forest name (`ourforest.eth`):
+One Permissioned Resolver serves the forest name `vantaraa.eth` and every plant name (ADR 0005).
 
-| Key | Value |
-|---|---|
-| `forest.contract` | Forest contract address on 0G |
-| `forest.chain` | `16661` |
-| `forest.plants` | comma-separated labels, e.g. `banyan-01,tulsi-04` (guardian-written; how the app discovers plants) |
-| `forest.supplier` | supplier address |
-
-On each plant name (`<label>.ourforest.eth`), served by its own Permissioned Resolver:
+On the forest name:
 
 | Key | Writer | Value |
 |---|---|---|
-| addr, coin type `2147500309` | guardian | PlantWallet address on 0G |
-| `forest.species` | guardian | e.g. `neem` |
-| `forest.stage` | guardian | `sapling`, `growing` or `mature` |
-| `forest.mode` | guardian | `real` or `simulated` |
-| `forest.persona` | guardian | the persona text, at most 400 characters |
-| `forest.status` | plant agent | `ok`, `thirsty` (the distress signal), `giving` or `safe_stop` |
-| `forest.decision` | plant agent | root hash of the latest decision record |
-| `avatar`, `description` | guardian | standard ENS keys |
+| `forest.plants` | guardian | comma-separated plant labels, e.g. `groot,sapling` (how readers discover plants) |
+| `signal.<label>` | that plant's agent only | `1` thirsty (the distress signal), `0` ok |
+| `forest.contract` | guardian | Forest contract address on 0G |
+| `forest.chain` | guardian | 0G chain ID, `16602` (Galileo) |
+| `forest.supplier` | guardian | supplier address on 0G |
+| `description`, `url` | guardian | standard ENS keys |
 
-The plant agent's key is granted `ROLE_SET_TEXT` only for `forest.status` and `forest.decision`, on its own resolver. It writes at most once every 5 minutes, or when its status changes.
+On each plant name (`<label>.vantaraa.eth`), all written by the guardian:
+
+| Key | Value |
+|---|---|
+| addr, coin type `0x80000000 \| 0G chain ID` (`2147500250` on Galileo) | PlantWallet address on 0G |
+| addr, coin type `2158638759` (Sepolia) | the plant agent's key, which holds its USDC |
+| `forest.species`, `forest.stage`, `forest.mode`, `forest.persona` | identity; stage `sapling`, `growing` or `mature`; mode `real` or `simulated`; persona at most 400 characters |
+| `description`, `url` | standard ENS keys |
+
+The plant agent's key is granted `ROLE_SET_TEXT` only on its own `signal.<label>` key. It writes when its status changes: `1` when it decides it is thirsty or a water order is placed, `0` when it is fine again. A safe stop leaves it at `1`.
 
 ## 8. Agent service HTTP API (JSON)
 
