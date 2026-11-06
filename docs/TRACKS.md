@@ -19,7 +19,7 @@ Must-shows: 0G call in the decision loop, a record per decision on 0G Storage wi
 - [x] 0G5. `/water` and `/signal` endpoints in the TS agent: record to Storage, `logDecision`/`orderWater` on 0G, pump, ENS signal. Owner: R
 - [ ] 0G6. Groot's `water_myself` calls `/water` instead of the ESP32 directly, passing its 0G request ID. Owner: D
 - [ ] 0G7. Safe stop shown live: 0G unreachable means no water and status `safe_stop`. Owner: R
-- [ ] 0G8. Replay: run a stored record again from its root (command in README is enough). Owner: R
+- [x] 0G8. Replay: run a stored record again from its root (command in README is enough). Owner: R
 - [ ] 0G9. `docs/sponsors/0G.md` filled: request ID, storage root, contract address, the "what breaks without 0G" sentence. Owner: R
 - [ ] 0G10. Team Telegram and X handles in the submission. Owner: R
 
