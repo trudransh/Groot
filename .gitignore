@@ -22,3 +22,10 @@ episodes/*.local.json
 .claude-flow/
 .swarm/
 .claude/settings.local.json
+
+# reference material, kept locally only
+/plant-forest-specs/
+/plant-forest-v2/
+/2026-11-06-plant-forest-design.md
+/INTERFACES_2026-11-06.md
+/RUN_SHEET_2026-11-06.md
