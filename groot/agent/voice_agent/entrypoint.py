@@ -22,7 +22,7 @@ from voice_agent.persona import (
 )
 from voice_agent.assistant import Assistant, prewarm, publish_status
 from voice_agent.persona import build_prompt
-from voice_agent import diary, plant_state, plant_tools, zero_g
+from voice_agent import diary, forest, plant_state, plant_tools, wallet, zero_g
 from voice_agent.inner_loop import InnerLoop
 from voice_agent.presence import PRESENCE_TOPIC, go_dormant, prerecord_greeting, publish_state, wake
 from voice_agent.logger import get_logger
@@ -51,6 +51,15 @@ def _spawn(coro) -> None:
     task = asyncio.create_task(coro)
     _active_tasks.add(task)
     task.add_done_callback(lambda t: _active_tasks.discard(t))
+
+
+async def _forest() -> str:
+    try:
+        trees = await asyncio.wait_for(forest.fetch(), timeout=8)
+    except Exception as e:
+        logger.warning("Forest lookup failed: %s", e)
+        trees = []
+    return forest.context(trees, forest.sw.forest_name(), wallet.ens_name())
 
 
 def _memory() -> str:
@@ -90,7 +99,7 @@ async def async_handle_presence(reader, ctx: JobContext, session: AgentSession, 
     # After a conversation ends, a face still in frame wakes Groot only once REWAKE_AFTER_S has passed.
     waited = time.monotonic() - session.userdata.rested_at >= REWAKE_AFTER_S
     if event == "seen" and session.userdata.dormant and (not session.userdata.await_leave or waited):
-        await agent.update_instructions(build_prompt(_memory()))
+        await agent.update_instructions(build_prompt(_memory(), await _forest()))
         await wake(session, ctx.room, session.tts)
     elif event == "lost" and not session.userdata.dormant:
         session.interrupt()
@@ -191,7 +200,7 @@ async def entrypoint(ctx: JobContext):
             room_id,
         )
 
-    system_prompt = build_prompt(_memory())
+    system_prompt = build_prompt(_memory(), await _forest())
 
     # ------------------------------------------------------------------
     # Create the Agent session with STT/LLM/TTS building blocks

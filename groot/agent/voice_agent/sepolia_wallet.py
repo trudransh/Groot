@@ -16,6 +16,7 @@ ZERO_G_CHAIN_ID = 16661
 ETH_COIN_TYPE = 60
 RESOLVE_SELECTOR = keccak(text="resolve(bytes,bytes)")[:4]
 ADDR_SELECTOR = keccak(text="addr(bytes32,uint256)")[:4]
+TEXT_SELECTOR = keccak(text="text(bytes32,string)")[:4]
 _LABEL = re.compile(r"[a-z0-9-]+")
 EXPLORER = "https://sepolia.etherscan.io"
 ETH_DECIMALS = 18
@@ -138,6 +139,18 @@ async def resolve_name(name: str) -> str | None:
     if address or in_forest(name):
         return address
     return await _resolve_on(mainnet_rpc_url(), name)
+
+
+async def text_record(name: str, key: str) -> str:
+    query = TEXT_SELECTOR + encode(["bytes32", "string"], [namehash(name), key])
+    call = RESOLVE_SELECTOR + encode(["bytes", "bytes"], [dns_encode(name), query])
+    async with httpx.AsyncClient(timeout=15) as http:
+        try:
+            out = str(await _rpc(http, "eth_call", [{"to": universal_resolver(), "data": "0x" + call.hex()}, "latest"]))
+            result, _ = decode(["bytes", "address"], bytes.fromhex(out.removeprefix("0x")))
+            return decode(["string"], result)[0]
+        except Exception:
+            return ""
 
 
 async def _resolve_on(rpc: str, name: str) -> str | None:
