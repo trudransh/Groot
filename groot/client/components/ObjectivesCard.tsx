@@ -31,21 +31,27 @@ export const ago = (iso: string | null | undefined) => {
 export const CARD = 'relative h-full w-full overflow-hidden rounded-2xl bg-white shadow-[0_1px_3px_rgba(0,0,0,0.06)]';
 
 export function Card({
-
+  title,
   onClick,
   children,
 }: {
-
+  title: string;
   onClick?: () => void;
   children?: ReactNode;
 }) {
-  const cls = `${CARD} flex flex-col p-4 text-left font-inter text-[13px] leading-relaxed text-[#273339]`;
+  const body = (
+    <>
+      <p className="mb-1.5 text-[12px] font-semibold">{title}</p>
+      {children}
+    </>
+  );
+  const cls = `${CARD} flex flex-col p-3 text-left font-inter text-[12px] leading-relaxed text-[#273339]`;
   return onClick ? (
     <button type="button" onClick={onClick} className={`${cls} transition-colors hover:bg-[#FAFBFB]`}>
-      {children}
+      {body}
     </button>
   ) : (
-    <div className={cls}>{children}</div>
+    <div className={cls}>{body}</div>
   );
 }
 
@@ -59,7 +65,7 @@ export function CardStack({ tabs, children }: { tabs: string[]; children: ReactN
   return (
     <section className="flex flex-col items-center gap-2.5">
       <div
-        className="relative aspect-square w-full touch-pan-y select-none"
+        className="relative aspect-[4/3] w-full touch-pan-y select-none"
         onPointerDown={e => (startX.current = e.clientX)}
         onPointerUp={e => {
           if (startX.current === null) return;
@@ -102,7 +108,7 @@ export function CardStack({ tabs, children }: { tabs: string[]; children: ReactN
 export function Sidebar({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(true);
   return (
-    <aside className={clsx('relative z-20 h-full shrink-0 transition-[width] duration-300', open ? 'w-[280px]' : 'w-0')}>
+    <aside className={clsx('relative z-20 h-full shrink-0 transition-[width] duration-300', open ? 'w-[240px]' : 'w-0')}>
       <button
         type="button"
         onClick={() => setOpen(o => !o)}
@@ -115,7 +121,7 @@ export function Sidebar({ children }: { children: ReactNode }) {
         </svg>
       </button>
       {/* Kept mounted when collapsed so the camera keeps watching. */}
-      <div className={clsx('h-full w-[280px] space-y-6 overflow-y-auto py-5 pr-5', !open && 'invisible')}>{children}</div>
+      <div className={clsx('h-full w-[240px] space-y-6 overflow-y-auto py-5 pr-5', !open && 'invisible')}>{children}</div>
     </aside>
   );
 }
@@ -138,7 +144,7 @@ export function SelfieCard({ selfie }: { selfie: Selfie | null }) {
 
 export function ToolsCard({ tools }: { tools: string[] }) {
   return (
-    <Card>
+    <Card title="Tools">
       <ul className="min-h-0 flex-1 space-y-0.5 overflow-y-auto pr-1 font-mono text-[12px]">
         {tools.map(t => (
           <li key={t}>{t}</li>
@@ -151,7 +157,7 @@ export function ToolsCard({ tools }: { tools: string[] }) {
 export function MemoryCard({ status }: { status: PlantStatus | null }) {
   const lines = status ? [...status.objectives.split('\n').filter(Boolean), `Watered ${ago(status.lastWateredAt)}`] : [];
   return (
-    <Card>
+    <Card title="Memory">
       <ul className="min-h-0 flex-1 list-disc space-y-0.5 overflow-y-auto pl-3">
         {lines.map(l => (
           <li key={l}>{l}</li>
@@ -163,7 +169,7 @@ export function MemoryCard({ status }: { status: PlantStatus | null }) {
 
 export function WalletCard() {
   return (
-    <Card>
+    <Card title="Wallet">
       <p className="text-[#8E989C]">Coming soon</p>
     </Card>
   );
@@ -171,7 +177,7 @@ export function WalletCard() {
 
 export function ForestCard() {
   return (
-    <Card>
+    <Card title="autoforest.eth">
       <ul className="space-y-0.5">
         <li>groot.autoforest.eth (me)</li>
         <li>sapling.autoforest.eth</li>

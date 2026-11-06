@@ -13,3 +13,8 @@ dependencies = [
 
 [tool.setuptools.packages.find]
 include = ["voice_agent*"]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.2.0",
+]

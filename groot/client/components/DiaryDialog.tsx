@@ -32,7 +32,7 @@ export function DiaryDialog({ entries }: { entries: DiaryEntry[] }) {
 
   return (
     <>
-      <Card onClick={() => setOpen(true)}>
+      <Card title="Diary" onClick={() => setOpen(true)}>
         {last ? (
           <>
             <p className="text-[#8A7B4F]">{ago(last.at)}</p>
