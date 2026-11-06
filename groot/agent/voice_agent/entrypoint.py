@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import httpx
 import os
 import re
 from typing import AsyncIterable
@@ -13,21 +14,14 @@ from livekit.agents import (
     WorkerOptions,
     cli,
 )
-from livekit.plugins import deepgram, elevenlabs, openai
-from livekit.plugins.elevenlabs import VoiceSettings
+from livekit.plugins import deepgram, openai
 from livekit.plugins.turn_detector.english import EnglishModel
 from voice_agent.persona import (
-    VOICE_ID,
-    VOICE_SPEED,
-    VOICE_STABILITY,
-    VOICE_SIMILARITY_BOOST,
-    VOICE_STYLE,
-    VOICE_USE_SPEAKER_BOOST,
     STT_KEYWORDS,
 )
 from voice_agent.assistant import Assistant, prewarm, publish_status
 from voice_agent.persona import build_prompt
-from voice_agent import diary, plant_state, plant_tools
+from voice_agent import diary, plant_state, plant_tools, zero_g
 from voice_agent.inner_loop import InnerLoop
 from voice_agent.presence import PRESENCE_TOPIC, go_dormant, prerecord_greeting, publish_state, wake
 from voice_agent.logger import get_logger
@@ -35,6 +29,7 @@ from voice_agent.logger import get_logger
 logger = get_logger()
 
 _active_tasks = set()
+IDLE_TIMEOUT_S = float(os.environ.get("IDLE_TIMEOUT_S", "45"))
 
 
 @dataclass
@@ -43,6 +38,8 @@ class SessionInfo:
     dormant: bool = True
     waking: bool = False
     end_pending: bool = False
+    # After a conversation ends, the same face must leave the frame before Groot wakes again.
+    await_leave: bool = False
 
 
 def _spawn(coro) -> None:
@@ -68,6 +65,7 @@ async def rest(ctx: JobContext, session: AgentSession, inner: InnerLoop, reason:
     if session.userdata.dormant:
         return
     await go_dormant(session, ctx.room, reason)
+    session.userdata.await_leave = reason != "nobody in frame"
     talk = _recent_talk(session)
     diary.write("conversation", f"Talked with someone ({reason}).\n{talk}" if talk else f"Someone came by ({reason}).")
     inner.poke(f"A conversation just ended ({reason}). Reflect on it briefly.")
@@ -81,7 +79,9 @@ async def async_handle_user_end_conversation(reader, ctx: JobContext, session: A
 
 async def async_handle_presence(reader, ctx: JobContext, session: AgentSession, inner: InnerLoop, agent):
     event = (await reader.read_all()).strip()
-    if event == "seen" and session.userdata.dormant:
+    if event == "lost":
+        session.userdata.await_leave = False
+    if event == "seen" and session.userdata.dormant and not session.userdata.await_leave:
         await agent.update_instructions(build_prompt(_memory()))
         await wake(session, ctx.room, session.tts)
     elif event == "lost" and not session.userdata.dormant:
@@ -130,9 +130,14 @@ async def strip_urls(text: AsyncIterable[str]) -> AsyncIterable[str]:
 
 async def entrypoint(ctx: JobContext):
 
+    try:
+        zero_g_settings = zero_g.config()
+    except zero_g.ZeroGNotConfigured:
+        logger.error("ZG_API_KEY is not set, not joining room %s", ctx.room.name)
+        return
     openrouter_api_key = os.environ.get("OPENROUTER_API_KEY")
     if not openrouter_api_key:
-        logger.error("OPENROUTER_API_KEY is not set — not joining room %s", ctx.room.name)
+        logger.error("OPENROUTER_API_KEY is not set, not joining room %s", ctx.room.name)
         return
 
     # ---------------------------------------------------------------------
@@ -173,38 +178,21 @@ async def entrypoint(ctx: JobContext):
         "keyterm": STT_KEYWORDS,
     }
 
-    # ElevenLabs carries Groot's voice; without a key, fall back to OpenRouter TTS.
-    if os.environ.get("ELEVEN_API_KEY"):
-        session_tts = elevenlabs.TTS(
-            model="eleven_flash_v2_5",
-            voice_id=VOICE_ID,
-            voice_settings=VoiceSettings(
-                speed=VOICE_SPEED,
-                stability=VOICE_STABILITY,
-                similarity_boost=VOICE_SIMILARITY_BOOST,
-                style=VOICE_STYLE,
-                use_speaker_boost=VOICE_USE_SPEAKER_BOOST,
-            ),
-        )
-    else:
-        # Grok Voice: cheapest OpenRouter TTS with conversational latency (~1s to
-        # first byte, $15/1M chars). Returns 24kHz PCM, the
-        # rate the openai plugin assumes.
-        logger.warning("ELEVEN_API_KEY not set — falling back to OpenRouter TTS")
-        session_tts = openai.TTS(
-            base_url="https://openrouter.ai/api/v1",
-            api_key=openrouter_api_key,
-            model=os.environ.get("OPENROUTER_TTS_MODEL", "x-ai/grok-voice-tts-1.0"),
-            voice=os.environ.get("OPENROUTER_TTS_VOICE", "eve"),
-            response_format="pcm",
-        )
+    session_tts = openai.TTS(
+        base_url="https://openrouter.ai/api/v1",
+        api_key=openrouter_api_key,
+        model=os.environ.get("OPENROUTER_TTS_MODEL", "x-ai/grok-voice-tts-1.0"),
+        voice=os.environ.get("OPENROUTER_TTS_VOICE", "eve"),
+        response_format="pcm",
+    )
 
     session = AgentSession(
         stt=deepgram.STT(**stt_kwargs),
         llm=openai.LLM(
-            model=os.environ.get("LLM_MODEL", "z-ai/glm-5.3-flash"),
-            base_url="https://openrouter.ai/api/v1",
-            api_key=openrouter_api_key,
+            model=zero_g_settings.model,
+            base_url=zero_g_settings.base_url,
+            api_key=zero_g_settings.api_key,
+            timeout=httpx.Timeout(zero_g_settings.timeout),
         ),
         tts=session_tts,
         # Defaults plus strip_urls: cited links stay in the text, out of the voice.
@@ -212,6 +200,7 @@ async def entrypoint(ctx: JobContext):
         vad=ctx.proc.userdata["vad"],
         turn_handling={"turn_detection": EnglishModel()},
         userdata=SessionInfo(),
+        user_away_timeout=IDLE_TIMEOUT_S,
     )
 
     session.userdata.room_id = room_id
@@ -219,6 +208,12 @@ async def entrypoint(ctx: JobContext):
     # One session for the life of the room, so history carries across conversations.
     agent = Assistant(system_prompt)
     inner = InnerLoop(ctx.room, is_busy=lambda: not session.userdata.dormant, on_change=publish_status)
+
+    @session.on("user_state_changed")
+    def _on_user_state_changed(ev):
+        # Nobody has spoken for IDLE_TIMEOUT_S: the conversation has died out.
+        if ev.new_state == "away" and not session.userdata.dormant:
+            _spawn(rest(ctx, session, inner, "nobody replied"))
 
     @session.on("agent_state_changed")
     def _on_agent_state_changed(ev):

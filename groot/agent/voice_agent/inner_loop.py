@@ -8,9 +8,8 @@ import os
 from typing import Awaitable, Callable
 
 from livekit import rtc
-from openai import AsyncOpenAI
 
-from voice_agent import diary, plant_state, plant_tools
+from voice_agent import diary, plant_state, plant_tools, zero_g
 from voice_agent.logger import get_logger
 from voice_agent.persona import NAME, OBJECTIVES, PERSONA, PLANTS_IN_DISTRESS
 
@@ -93,13 +92,27 @@ def _prompt() -> str:
     )
 
 
+def _tool_args(raw: object) -> dict | None:
+    try:
+        args = json.loads(raw or "{}") if isinstance(raw, str) or raw is None else None
+    except json.JSONDecodeError:
+        return None
+    return args if isinstance(args, dict) else None
+
+
+def _sleep_minutes(value: object) -> float:
+    if isinstance(value, bool) or not isinstance(value, (int, float)) or not 1 <= value <= 24 * 60:
+        return DEFAULT_SLEEP_MIN
+    return float(value)
+
+
 class InnerLoop:
     def __init__(self, room: rtc.Room, is_busy: Callable[[], bool], on_change: Callable[[], Awaitable[None]]) -> None:
         self.room = room
         self.is_busy = is_busy
         self.on_change = on_change
-        self.client = AsyncOpenAI(base_url="https://openrouter.ai/api/v1", api_key=os.environ["OPENROUTER_API_KEY"])
-        self.model = os.environ.get("INNER_LLM_MODEL", os.environ.get("LLM_MODEL", "z-ai/glm-5.3-flash"))
+        self.client = zero_g.client()
+        self.model = zero_g.config().model
         self._poke = asyncio.Event()
         self._poke_note = ""
 
@@ -145,22 +158,35 @@ class InnerLoop:
             },
         ]
         for _ in range(MAX_STEPS):
-            resp = await self.client.chat.completions.create(model=self.model, messages=messages, tools=_TOOLS, max_tokens=400)
-            msg = resp.choices[0].message
-            if msg.content and msg.content.strip():
+            try:
+                resp = await self.client.chat.completions.create(model=self.model, messages=messages, tools=_TOOLS, max_tokens=400)
+            except Exception as e:
+                logger.warning("0G call failed, waiting: %s", e)
+                return await self._wait("0G did not answer")
+            logger.info("0G inner request id %s", zero_g.request_id(resp))
+            msg = resp.choices[0].message if resp.choices else None
+            if msg is None:
+                return await self._wait("0G sent nothing")
+            if isinstance(msg.content, str) and msg.content.strip():
                 await self._note("thought", msg.content)
             if not msg.tool_calls:
                 break
             messages.append(msg.model_dump(exclude_none=True))
             for call in msg.tool_calls:
-                args = json.loads(call.function.arguments or "{}")
+                args = _tool_args(call.function.arguments)
+                if args is None:
+                    return await self._wait(f"unreadable {call.function.name} request")
                 if call.function.name == "sleep":
-                    minutes = float(args.get("minutes") or DEFAULT_SLEEP_MIN)
-                    await self._note("sleep", f"{args.get('diary', '').strip()} (sleeping {minutes:.0f} min)")
+                    minutes = _sleep_minutes(args.get("minutes"))
+                    await self._note("sleep", f"{str(args.get('diary', '')).strip()} (sleeping {minutes:.0f} min)")
                     return minutes
                 result = await self._call(call.function.name, args)
                 messages.append({"role": "tool", "tool_call_id": call.id, "content": result})
-        await self._note("sleep", f"Dozed off (sleeping {DEFAULT_SLEEP_MIN:.0f} min)")
+        return await self._wait("")
+
+    async def _wait(self, reason: str) -> float:
+        prefix = f"{reason}. " if reason else ""
+        await self._note("sleep", f"{prefix}Dozed off (sleeping {DEFAULT_SLEEP_MIN:.0f} min)")
         return DEFAULT_SLEEP_MIN
 
     async def _call(self, name: str, args: dict) -> str:

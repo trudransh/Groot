@@ -109,7 +109,7 @@ export function VoiceAssistant({
     armed: dormant,
     rearmDelayMs: REARM_MS,
     onSeen: () => sendPresence('seen'),
-    onLost: () => !dormantRef.current && sendPresence('lost'),
+    onLost: () => sendPresence('lost'),
   });
 
   // Crowd filter: the mic only carries sound while someone is looking at Groot (with a short grace for glances away).

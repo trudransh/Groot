@@ -7,14 +7,14 @@ import os
 
 import httpx
 from livekit import rtc
-from openai import AsyncOpenAI
 
+from voice_agent import zero_g
 from voice_agent.logger import get_logger
 
 logger = get_logger()
 
 PHOTO_RPC = "take_plant_photo"
-VISION_MODEL = os.environ.get("VISION_MODEL", "google/gemini-2.5-flash")
+COULD_NOT_SEE = "(could not see the photo right now)"
 PUMP_URL = os.environ.get("PUMP_URL", "").rstrip("/")
 PUMP_TOKEN = os.environ.get("PUMP_TOKEN", "")
 # Calibrate by running the pump into a measuring jug.
@@ -71,21 +71,26 @@ async def see_selfie() -> str:
 
 
 async def describe_photo(data_url: str) -> str:
-    client = AsyncOpenAI(base_url="https://openrouter.ai/api/v1", api_key=os.environ["OPENROUTER_API_KEY"])
-    resp = await client.chat.completions.create(
-        model=VISION_MODEL,
-        messages=[
-            {
-                "role": "user",
-                "content": [
-                    {"type": "text", "text": _VISION_PROMPT},
-                    {"type": "image_url", "image_url": {"url": data_url}},
-                ],
-            }
-        ],
-        max_tokens=300,
-    )
-    return resp.choices[0].message.content or "(no description)"
+    try:
+        resp = await zero_g.client().chat.completions.create(
+            model=zero_g.config().model,
+            messages=[
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": _VISION_PROMPT},
+                        {"type": "image_url", "image_url": {"url": data_url}},
+                    ],
+                }
+            ],
+            max_tokens=300,
+        )
+    except Exception:
+        logger.exception("0G vision call failed")
+        return COULD_NOT_SEE
+    logger.info("0G vision request id %s", zero_g.request_id(resp))
+    content = resp.choices[0].message.content if resp.choices else None
+    return content.strip() if isinstance(content, str) and content.strip() else COULD_NOT_SEE
 
 
 async def run_pump(seconds: int) -> dict:

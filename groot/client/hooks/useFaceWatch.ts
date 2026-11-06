@@ -97,6 +97,7 @@ export default function useFaceWatch(videoRef: RefObject<HTMLVideoElement>, opti
           lostFired = false;
         } else if (!lostFired && wall - lastSeen >= optionsRef.current.lostMs) {
           lostFired = true;
+          firedForArm = -1;
           optionsRef.current.onLost();
         }
 

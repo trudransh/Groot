@@ -32,13 +32,6 @@ Track my leaves
 # Prerecorded once per worker and replayed whenever a face wakes Groot up.
 WAKE_GREETING = "Hi, I'm Groot. Would you like to talk with me?"
 
-# ElevenLabs premade voice until Groot has its own; override with ELEVEN_VOICE_ID.
-VOICE_ID = os.environ.get("ELEVEN_VOICE_ID", "cjVigY5qzO86Huf0OWal")
-VOICE_SPEED = 0.9
-VOICE_STABILITY = 0.3
-VOICE_SIMILARITY_BOOST = 0.6
-VOICE_STYLE = 0.4
-VOICE_USE_SPEAKER_BOOST = True
 
 STT_KEYWORDS = ["Groot"]
 
