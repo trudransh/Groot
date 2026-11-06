@@ -48,13 +48,10 @@ async def publish_status() -> None:
 
 async def _distress_command(on: bool, label: str | None) -> None:
     try:
-        if label is None:
-            own = wallet.ens_name()
-            others = [t["label"] for t in await forest.fetch() if t["name"] != own]
-            if not others:
-                logger.warning("Distress command: no other tree in the forest")
-                return
-            label = others[0]
+        label = label or water.plant_label()
+        if not label:
+            logger.warning("Distress command: this plant has no PLANT_LABEL")
+            return
         await distress.set_signal(label, on)
         logger.info("Distress command: %s signal %s", label, "on" if on else "off")
         distress.wake_watcher()

@@ -75,11 +75,13 @@ def sync(trees: list[dict], own_name: str | None) -> dict:
     raised = [n for n in now if n not in d["seen"]]
     cleared = [n for n in d["seen"] if n not in now]
     own = next((t["thirsty"] for t in trees if t.get("name") == own_name), None)
-    if own is not None and own != d["own"]:
+    own_changed = own is not None and own != d.get("own_seen")
+    if own_changed:
         d["own"] = own
+        d["own_seen"] = own
         _save(d)
     if not raised and not cleared:
-        return {"raised": [], "cleared": []}
+        return {"raised": [], "cleared": [], "own_changed": own_changed}
     for name in cleared:
         d["ignored"].pop(name, None)
         if d["help"] and d["help"]["plant"] == name:
@@ -87,7 +89,7 @@ def sync(trees: list[dict], own_name: str | None) -> dict:
             d["help"] = None
     d["seen"] = now
     _save(d)
-    return {"raised": raised, "cleared": cleared}
+    return {"raised": raised, "cleared": cleared, "own_changed": own_changed}
 
 
 def wake_watcher() -> None:
@@ -212,6 +214,7 @@ async def tick(own_name: str | None, poke: Callable[[str], None], refresh: Calla
     notes += await _reconsider()
     if notes:
         poke(" ".join(notes))
+    if notes or events["own_changed"]:
         await refresh()
     return events
 

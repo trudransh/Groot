@@ -52,10 +52,14 @@ def test_calls_are_other_thirsty_trees_only():
 
 
 def test_sync_reports_raised_then_cleared(plant):
-    assert distress.sync([tree("sapling", thirsty=True)], ME) == {"raised": [SAPLING], "cleared": []}
-    assert distress.sync([tree("sapling", thirsty=True)], ME) == {"raised": [], "cleared": []}
+    def moves(trees):
+        e = distress.sync(trees, ME)
+        return e["raised"], e["cleared"]
+
+    assert moves([tree("sapling", thirsty=True)]) == ([SAPLING], [])
+    assert moves([tree("sapling", thirsty=True)]) == ([], [])
     assert distress.current() == [SAPLING]
-    assert distress.sync([tree("sapling")], ME) == {"raised": [], "cleared": [SAPLING]}
+    assert moves([tree("sapling")]) == ([], [SAPLING])
     assert distress.current() == []
 
 
@@ -162,7 +166,7 @@ def test_distress_text_command_sets_signal_without_the_agent(plant, monkeypatch)
     monkeypatch.setattr(distress, "set_signal", fake_signal)
     monkeypatch.setattr(forest, "fetch", fake_fetch)
     monkeypatch.setattr(assistant, "_default_text_input_cb", fake_default)
-    monkeypatch.setattr(assistant.wallet, "ens_name", lambda: ME)
+    monkeypatch.setenv("PLANT_LABEL", "sapling")
     asyncio.run(assistant.handle_text_input(object(), TextInputEvent(text="!distress on")))
     asyncio.run(assistant.handle_text_input(object(), TextInputEvent(text="!distress off fern")))
     assert sent == [("sapling", True), ("fern", False)] and agent == []
@@ -318,3 +322,26 @@ def test_tick_asks_to_reconsider_once_when_help_becomes_affordable(plant, monkey
     plant["reservoir"] = 600
     asyncio.run(distress.tick(ME, pokes.append, refresh))
     assert len(pokes) == 2
+
+
+def test_tick_refreshes_when_own_signal_changes(sapling, monkeypatch):
+    from voice_agent import forest
+
+    mine = {"thirsty": True}
+
+    async def fake_fetch():
+        return [tree("sapling", thirsty=mine["thirsty"]), tree("groot")]
+
+    monkeypatch.setattr(forest, "fetch", fake_fetch)
+    pokes, refreshes = [], []
+
+    async def refresh():
+        refreshes.append(1)
+
+    asyncio.run(distress.tick(SAPLING, pokes.append, refresh))
+    assert refreshes == [1] and distress.own_signal() is True
+    asyncio.run(distress.tick(SAPLING, pokes.append, refresh))
+    assert refreshes == [1]
+    mine["thirsty"] = False
+    asyncio.run(distress.tick(SAPLING, pokes.append, refresh))
+    assert refreshes == [1, 1] and distress.own_signal() is False
