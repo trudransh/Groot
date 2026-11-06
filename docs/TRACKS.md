@@ -44,8 +44,8 @@ Must-shows: full journey (request, person verifies, backend validates, protected
 
 - [x] W1. Claim flow: fresh World ID Agent Pass, backend checks, guardian registers the human
 - [x] W2. Transfer flow: Groot sends USDC outside the forest only after World ID, and only if the name still resolves to the verified address
-- [ ] W3. Spending caps in Groot's wallet: per transfer, per day, and a reserve it never spends. Owner: D
-- [x] W4. Dropped: a per-person limit would block our own testing with few World IDs. W3's per-transfer, per-day and reserve caps protect the wallet whoever asks.
+- [x] W3. Dropped for testing and the demo: no spending caps in Groot's wallet. Outsiders still need World ID; listed under Limitations in the README.
+- [x] W4. Dropped: a per-person limit would block our own testing with few World IDs. Wallet caps (W3) were dropped too.
 - [ ] W5. Failed path recorded for the demo: unverified person asks for money, nothing sent. Owner: D
 - [ ] W6. `registerHuman` running for real on 0G Galileo: set `CHAIN_ID=16602`, `CHAIN_RPC_URL=https://evmrpc-testnet.0g.ai` and the guardian key in `worldcoin/.env`, run one claim. Owner: Ra
 - [ ] W7. `docs/sponsors/WORLD_DEBRIEF.md` filled. Owner: Ra
