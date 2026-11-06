@@ -77,7 +77,7 @@ export type DecisionRecord = {
   finalDecision: Decision
 }
 
-export type PlantStatus = 'ok' | 'thirsty' | 'asking' | 'giving' | 'safe_stop'
+export type PlantStatus = 'ok' | 'thirsty' | 'giving' | 'safe_stop'
 
 export type DecisionSummary = {
   checkpointId: string
