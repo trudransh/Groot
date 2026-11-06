@@ -14,3 +14,4 @@ ETHGlobal requires this disclosure. We fill it in as we build, not at the end.
 | Fri 06 Nov 10:30 | agent/ | `types.ts`, `rules.ts`, `decider/parse.ts`, `voice/templates.ts`, `personas.ts` and their tests, drafted with Claude Code | | |
 | Fri 06 Nov 10:30 | .claude/agents, docs/ORCHESTRATION.md | Coding-agent roles and loop, drafted with Claude Code | | |
 | Fri 06 Nov | station/esp32-pump/ | ESP32 pump firmware (`pump_wifi`), its README, and the MCP server (`pump_mcp`), generated with Claude Code from our spec | Hardware wiring, WiFi config | Tested on device (all HTTP routes, pump run under water) |
+| Fri 06 Nov | groot/ | Groot LiveKit voice agent + Next.js client, ported and trimmed from our solenegpt repo by Claude Code (one persona, no auth/payments) | | |

@@ -29,3 +29,7 @@ episodes/*.local.json
 /2026-11-06-plant-forest-design.md
 /INTERFACES_2026-11-06.md
 /RUN_SHEET_2026-11-06.md
+*.tsbuildinfo
+
+# Groot body memory (watering and leaf log)
+/groot/agent/state/

@@ -1,0 +1,15 @@
+[project]
+name = "groot-agent"
+version = "0.0.1"
+description = "Groot voice agent (LiveKit)"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "httpx>=0.28.1",
+    "livekit-agents[deepgram,elevenlabs,openai,silero,turn-detector]~=1.8",
+    "openai>=1.76.0",
+    "python-dotenv>=1.1.0",
+]
+
+[tool.setuptools.packages.find]
+include = ["voice_agent*"]

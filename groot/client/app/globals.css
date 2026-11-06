@@ -1,0 +1,86 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --primary: #f5f5f5;
+  --text-color: #171d21;
+  --accent: #16a34a;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  color: var(--text-color);
+  background: var(--primary);
+  overflow-x: hidden;
+}
+
+* {
+  box-sizing: border-box;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-smooth: never;
+}
+
+:root {
+  --lk-va-bar-width: 72px;
+  --lk-control-bar-height: unset;
+  --lk-bg: #f5f5f5;
+  --lk-fg: #171d21;
+}
+
+[data-lk-theme='default'] {
+  --lk-bg: #f5f5f5;
+  --lk-fg: #171d21;
+}
+
+/* AgentAudioVisualizerRadial: the upstream Tailwind v4 classes as plain CSS. */
+/* No position here: callers place it (e.g. absolute over a button). */
+.lk-radial {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.lk-radial [data-lk-index] {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translateX(-50%);
+  transform-origin: bottom;
+  border-radius: 9999px;
+  background-color: color-mix(in srgb, currentColor 10%, transparent);
+  transition: background-color 150ms linear;
+}
+
+.lk-radial [data-lk-index][data-lk-highlighted='true'] {
+  background-color: currentColor;
+}
+
+.lk-radial:is([data-lk-state='connecting'], [data-lk-state='initializing'], [data-lk-state='listening'])
+  [data-lk-index] {
+  transition-duration: 300ms;
+}
+
+.lk-radial[data-lk-state='thinking'] {
+  animation: lk-radial-spin 5s linear infinite;
+}
+
+@keyframes lk-radial-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.lk-radial[data-lk-state='thinking'] [data-lk-index] {
+  background-color: currentColor;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lk-radial[data-lk-state='thinking'] {
+    animation: none;
+  }
+}
