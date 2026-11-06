@@ -7,7 +7,7 @@ import { GROOT } from '@/config/agents.config';
 
 export interface DiaryEntry {
   at: string;
-  kind: 'decision' | 'thought' | 'action' | 'sleep' | 'wake' | 'conversation';
+  kind: 'decision' | 'thought' | 'action' | 'sleep' | 'wake' | 'conversation' | 'forest';
   text: string;
   thought?: string;
   ms?: number;
@@ -30,6 +30,7 @@ const KIND_LABEL: Record<DiaryEntry['kind'], string> = {
   action: 'did',
   sleep: 'slept',
   conversation: 'talked',
+  forest: 'forest',
 };
 
 const KIND_DOT: Record<DiaryEntry['kind'], string> = {
@@ -39,6 +40,7 @@ const KIND_DOT: Record<DiaryEntry['kind'], string> = {
   action: '#4A7FB5',
   sleep: '#8E989C',
   conversation: '#D9822B',
+  forest: '#C0392B',
 };
 
 const stamp = (iso: string) => {

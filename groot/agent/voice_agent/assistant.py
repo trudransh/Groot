@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 import os
-from typing import Annotated
+from typing import Annotated, Awaitable, Callable
 
 from livekit.agents import Agent, AgentSession, ChatContext, JobProcess, RunContext, function_tool, get_job_context
 from livekit.agents.voice.room_io import TextInputEvent
@@ -10,7 +10,7 @@ from livekit.agents.voice.room_io.types import _default_text_input_cb
 from livekit.plugins import silero
 from pydantic import Field
 
-from voice_agent import forest, plant_state, plant_tools, sepolia_wallet, water
+from voice_agent import distress, forest, plant_state, plant_tools, sepolia_wallet, wallet, water
 from voice_agent.logger import get_logger
 
 logger = get_logger()
@@ -46,7 +46,27 @@ async def publish_status() -> None:
     await room.local_participant.send_text(json.dumps(status), topic=STATUS_TOPIC)
 
 
+async def _distress_command(on: bool, label: str | None) -> None:
+    try:
+        if label is None:
+            own = wallet.ens_name()
+            others = [t["label"] for t in await forest.fetch() if t["name"] != own]
+            if not others:
+                logger.warning("Distress command: no other tree in the forest")
+                return
+            label = others[0]
+        await distress.set_signal(label, on)
+        logger.info("Distress command: %s signal %s", label, "on" if on else "off")
+        distress.wake_watcher()
+    except Exception as e:
+        logger.warning("Distress command failed: %s", e)
+
+
 async def handle_text_input(sess: AgentSession, ev: TextInputEvent) -> None:
+    signal = distress.command(ev.text)
+    if signal is not None:
+        await _distress_command(*signal)
+        return
     delta = water.level_command(ev.text)
     if delta is None:
         await _default_text_input_cb(sess, ev)
@@ -60,8 +80,13 @@ async def handle_text_input(sess: AgentSession, ev: TextInputEvent) -> None:
 
 
 class Assistant(Agent):
-    def __init__(self, system_prompt: str, chat_ctx: ChatContext | None = None) -> None:
+    def __init__(self, system_prompt: str, chat_ctx: ChatContext | None = None, prompt_source: Callable[[], Awaitable[str]] | None = None) -> None:
         super().__init__(instructions=system_prompt, chat_ctx=chat_ctx)
+        self.prompt_source = prompt_source
+
+    async def refresh_instructions(self) -> None:
+        if self.prompt_source:
+            await self.update_instructions(await self.prompt_source())
 
     @function_tool()
     async def end_conversation(self, context: RunContext) -> str:
@@ -147,6 +172,21 @@ class Assistant(Agent):
         [Water level increased by 30ml]; never because someone just says they watered or filled you."""
         last = next((m.text_content or "" for m in reversed(self.chat_ctx.items) if getattr(m, "role", None) == "user"), "")
         result = await water.record_refill(ml, last)
+        await publish_status()
+        return result
+
+    @function_tool()
+    async def answer_distress(
+        self,
+        plant: Annotated[str, Field(description="The tree in distress, e.g. sapling")],
+        help: Annotated[bool, Field(description="True to help, false to ignore the call")],
+        reward_usdc: Annotated[float, Field(ge=0, description="USDC you will pay the human who waters it by hand; 0 when ignoring")],
+        reason: Annotated[str, Field(description="Why you help or ignore it")],
+    ) -> str:
+        """Answer another tree's distress call. Helping means paying a human more than the usual rate to water that tree by hand,
+        only once its distress signal turns off. Help only if you have water and money to spare."""
+        result = await distress.answer(plant, help, reward_usdc, reason)
+        await self.refresh_instructions()
         await publish_status()
         return result
 

@@ -18,7 +18,7 @@ def load() -> list[dict]:
 
 
 def write(kind: str, text: str, **extra: object) -> dict:
-    """kind: decision, thought, action, sleep, wake or conversation."""
+    """kind: decision, thought, action, sleep, wake, conversation or forest."""
     entries = load()
     entry = {"at": datetime.now(timezone.utc).isoformat(), "kind": kind, "text": text.strip()}
     entry.update({k: v for k, v in extra.items() if v is not None})

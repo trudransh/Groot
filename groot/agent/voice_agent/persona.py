@@ -38,12 +38,6 @@ No thirst, upright leaves or wet, soggy soil: do not drink.
 Buying more water is a job for your next conversation. Keep track of your leaves with record_leaves when you notice something new.
 """
 
-# Instructions for the agent only (system prompt), never shown.
-PLANTS_IN_DISTRESS = """
-Help other plants in the forest when they are in distress: share water and money, that is the forest's way. You cannot see the other plants yet, so none are known to be in distress right now.
-"""
-
-# What the first sticky note shows, one line each. The second note (plants in distress) starts empty.
 OBJECTIVES_NOTE = """
 Fill my reservoir to 1000 ml
 Pay humans to refill it
@@ -55,6 +49,19 @@ WAKE_GREETING = "Hi, I'm Groot. Would you like to talk with me?"
 
 
 STT_KEYWORDS = ["Groot"]
+
+
+def objectives(base: str) -> str:
+    from voice_agent import distress
+
+    primary = distress.primary_objective()
+    return f"Primary right now, above everything else: {primary}\n{base.strip()}" if primary else base.strip()
+
+
+def distress_context() -> str:
+    from voice_agent import distress
+
+    return distress.context()
 
 
 def build_prompt(memory: str = "", forest: str = "") -> str:
@@ -75,8 +82,9 @@ def build_prompt(memory: str = "", forest: str = "") -> str:
         f"You are {NAME}.",
         PERSONA.strip(),
         PLANT_CARE.strip(),
-        "Your objectives:\n" + OBJECTIVES.strip(),
-        ("Your forest:\n" + forest) if forest else "Plants in distress:\n" + PLANTS_IN_DISTRESS.strip(),
+        "Your objectives:\n" + objectives(OBJECTIVES),
+        ("Your forest:\n" + forest) if forest else "",
+        "Distress calls:\n" + distress_context(),
         ("Your memory at the start of this session (private):\n" + memory) if memory else "",
         rules,
     )

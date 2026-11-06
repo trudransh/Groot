@@ -162,7 +162,13 @@ export function ToolsCard({ tools }: { tools: string[] }) {
 }
 
 export function MemoryCard({ status }: { status: PlantStatus | null }) {
-  const lines = status ? [...status.objectives.split('\n').filter(Boolean), `Watered ${ago(status.lastWateredAt)}`] : [];
+  const lines = status
+    ? [
+        ...status.plantsInDistress.map(p => `Distress: ${p}`),
+        ...status.objectives.split('\n').filter(Boolean),
+        `Watered ${ago(status.lastWateredAt)}`,
+      ]
+    : [];
   return (
     <Card title="Memory">
       <ul className="min-h-0 flex-1 list-disc space-y-0.5 overflow-y-auto pl-3">

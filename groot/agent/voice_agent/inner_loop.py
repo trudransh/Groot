@@ -12,9 +12,9 @@ from typing import Awaitable, Callable
 
 from livekit import rtc
 
-from voice_agent import diary, forest, plant_state, plant_tools, wallet, water, zero_g
+from voice_agent import diary, distress, forest, plant_state, plant_tools, wallet, water, zero_g
 from voice_agent.logger import get_logger
-from voice_agent.persona import INNER_OBJECTIVES, NAME, PERSONA, PLANT_CARE, PLANTS_IN_DISTRESS
+from voice_agent.persona import INNER_OBJECTIVES, NAME, PERSONA, PLANT_CARE, distress_context, objectives
 
 logger = get_logger()
 
@@ -61,6 +61,23 @@ _TOOLS = [
     {
         "type": "function",
         "function": {
+            "name": "answer_distress",
+            "description": "Answer another tree's distress call: help (pay a human more than the usual rate to water it by hand) or ignore it. Help only with water and money to spare.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "plant": {"type": "string", "description": "The tree in distress, e.g. sapling"},
+                    "help": {"type": "boolean"},
+                    "reward_usdc": {"type": "number", "description": "USDC you will pay the human who waters it; 0 when ignoring."},
+                    "reason": {"type": "string"},
+                },
+                "required": ["plant", "help", "reward_usdc", "reason"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "sleep",
             "description": "Rest until your next thought. Always end each waking moment with this.",
             "parameters": {
@@ -85,8 +102,9 @@ def _prompt(forest_context: str = "") -> str:
             f"You are {NAME}, alone with your thoughts. This is your inner voice, not a conversation: nobody hears it.",
             PERSONA.strip(),
             PLANT_CARE.strip(),
-            "Your objectives right now:\n" + INNER_OBJECTIVES.strip(),
-            ("Your forest:\n" + forest_context) if forest_context else "Plants in distress:\n" + PLANTS_IN_DISTRESS.strip(),
+            "Your objectives right now:\n" + objectives(INNER_OBJECTIVES),
+            *((("Your forest:\n" + forest_context),) if forest_context else ()),
+            "Distress calls:\n" + distress_context(),
             "Live like a person: notice how you feel, decide whether anything needs doing, do it with your tools, "
             "then sleep. Act with tool calls, never only words: if your selfie shows thirst and your reservoir has water, call water_myself; "
             f"each drink is {water.DRINK_ML} ml. You only know how you look from your selfie, which is taken and read for you each time you wake; trust it and do not ask for another. "
@@ -126,6 +144,9 @@ def decision_label(name: str, args: dict) -> str:
     action = _DECISIONS.get(name, name)
     if name == "sleep" and "minutes" in args:
         return f"Decided to {action} for {_sleep_minutes(args['minutes']):.0f} min"
+    if name == "answer_distress":
+        plant = str(args.get("plant", "")).split(".")[0]
+        return f"Decided to {'help' if args.get('help') is True else 'ignore'} {plant}"
     if name == "water_myself" and args.get("critical") is True:
         return f"Decided to {action} (critical)"
     return f"Decided to {action}"
@@ -308,6 +329,15 @@ class InnerLoop:
             except Exception as e:
                 await self._note("action", f"Tried to water myself, pump failed ({e}).")
                 return f"Pump failed ({e})."
+            await self._note("action", result)
+            await self.on_change()
+            return result
+        if name == "answer_distress":
+            try:
+                reward = float(args.get("reward_usdc") or 0)
+            except (TypeError, ValueError):
+                reward = 0.0
+            result = await distress.answer(str(args.get("plant", "")), args.get("help") is True, reward, str(args.get("reason", "")))
             await self._note("action", result)
             await self.on_change()
             return result

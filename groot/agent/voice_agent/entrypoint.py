@@ -22,7 +22,7 @@ from voice_agent.persona import (
 )
 from voice_agent.assistant import Assistant, handle_text_input, prewarm, publish_status
 from voice_agent.persona import build_prompt
-from voice_agent import diary, forest, plant_state, plant_tools, wallet, water, zero_g
+from voice_agent import diary, distress, forest, plant_state, plant_tools, wallet, water, zero_g
 from voice_agent.inner_loop import InnerLoop
 from voice_agent.presence import PRESENCE_TOPIC, go_dormant, prerecord_greeting, publish_state, wake
 from voice_agent.logger import get_logger
@@ -169,6 +169,19 @@ async def refresh_status_forever() -> None:
             logger.warning("Status refresh failed: %s", e)
 
 
+async def watch_distress_forever(inner: InnerLoop, refresh) -> None:
+    while True:
+        try:
+            events = await distress.tick(wallet.ens_name(), inner.poke, refresh)
+            for name in events["raised"]:
+                diary.write("forest", f"{name} sent a distress signal.")
+            for name in events["cleared"]:
+                diary.write("forest", f"{name} turned its distress signal off.")
+        except Exception as e:
+            logger.warning("Distress check failed: %s", e)
+        await distress.wait_for_next_check()
+
+
 async def entrypoint(ctx: JobContext):
 
     try:
@@ -248,8 +261,16 @@ async def entrypoint(ctx: JobContext):
     session.userdata.room_id = room_id
 
     # One session for the life of the room, so history carries across conversations.
-    agent = Assistant(system_prompt)
+    async def fresh_prompt() -> str:
+        return build_prompt(_memory(), await _forest())
+
+    agent = Assistant(system_prompt, prompt_source=fresh_prompt)
     inner = InnerLoop(ctx.room, is_busy=lambda: not session.userdata.dormant, on_change=publish_status)
+
+    async def refresh_after_distress() -> None:
+        if not session.userdata.dormant:
+            await agent.refresh_instructions()
+        await publish_status()
 
     @session.on("user_state_changed")
     def _on_user_state_changed(ev):
@@ -284,6 +305,7 @@ async def entrypoint(ctx: JobContext):
     _spawn(prerecord_greeting(session.tts))
     _spawn(inner.run())
     _spawn(refresh_status_forever())
+    _spawn(watch_distress_forever(inner, refresh_after_distress))
 
 
 # ----------------------------------------------------------------------

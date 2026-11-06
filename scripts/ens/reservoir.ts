@@ -1,8 +1,8 @@
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http'
 import { readFileSync } from 'node:fs'
-import { readReservoirs, setReservoir, type Forest } from './forest.js'
+import { readReservoirs, sendSignal, setReservoir, type Forest } from './forest.js'
 import { clientsFor, pub } from './env.js'
-import { RESERVOIR_MAX_ML, parseReservoir } from './signal.js'
+import { RESERVOIR_MAX_ML, SIGNAL, parseReservoir } from './signal.js'
 
 const PORT = Number(process.env.ADMIN_PORT ?? 8790)
 const forest: Forest = JSON.parse(readFileSync('deployments/sepolia.json', 'utf8'))
@@ -35,7 +35,7 @@ async function change(res: ServerResponse, label: string, delta: number) {
   return reply(res, 200, { plant: `${label}.${forest.name}`, before: tree.ml, ml, tx: tx(hash) })
 }
 
-const USAGE = 'GET /reservoir | POST /refill/<plant> {"ml":n} | POST /use/<plant> {"ml":n} | PUT /reservoir/<plant> {"ml":n|null}'
+const USAGE = 'GET /reservoir | POST /refill/<plant> {"ml":n} | POST /use/<plant> {"ml":n} | PUT /reservoir/<plant> {"ml":n|null} | PUT /signal/<plant> {"on":bool}'
 
 createServer(async (req, res) => {
   try {
@@ -51,6 +51,13 @@ createServer(async (req, res) => {
       const ml = parseReservoir(input.ml)
       if (!ml) return reply(res, 400, { error: `ml must be a whole number from 1 to ${RESERVOIR_MAX_ML}` })
       return change(res, label, route === 'refill' ? ml : -ml)
+    }
+    if (req.method === 'PUT' && route === 'signal') {
+      if (typeof input.on !== 'boolean') return reply(res, 400, { error: 'on must be true or false' })
+      const levels = await readReservoirs(pub as never, forest.name)
+      if (!levels.some((l) => l.label === label)) return reply(res, 404, { error: `${label} is not a tree in ${forest.name}` })
+      const code = input.on ? SIGNAL.thirsty : SIGNAL.ok
+      return reply(res, 200, { plant: `${label}.${forest.name}`, signal: code, tx: tx(await sendSignal(guardian, forest, label, code)) })
     }
     if (req.method === 'PUT' && route === 'reservoir') {
       const ml = input.ml === null ? null : parseReservoir(input.ml)

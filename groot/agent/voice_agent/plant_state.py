@@ -145,18 +145,18 @@ def watering_summary() -> str:
     )
 
 
-TOOL_NAMES = ["take_selfie", "see_selfie", "record_leaves", "watering_history", "my_reservoir", "water_myself", "offer_refill", "reservoir_refilled", "check_refill", "record_manual_watering", "sleep"]
+TOOL_NAMES = ["take_selfie", "see_selfie", "record_leaves", "watering_history", "my_reservoir", "water_myself", "offer_refill", "reservoir_refilled", "check_refill", "record_manual_watering", "answer_distress", "sleep"]
 
 
 def status() -> dict:
-    from voice_agent import wallet
+    from voice_agent import distress, wallet
     from voice_agent.persona import OBJECTIVES_NOTE
 
     state = load()
     last_leaf = state["leaf_checks"][-1] if state["leaf_checks"] else None
     return {
-        "objectives": OBJECTIVES_NOTE.strip(),
-        "plantsInDistress": [],
+        "objectives": "\n".join(x for x in (distress.objective_note(), OBJECTIVES_NOTE.strip()) if x),
+        "plantsInDistress": distress.current(),
         "lastWateredAt": state["waterings"][-1]["at"] if state["waterings"] else None,
         "waterMl": total_water_ml(state),
         "leafCount": last_leaf["count"] if last_leaf else None,

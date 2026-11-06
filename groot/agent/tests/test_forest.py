@@ -60,8 +60,8 @@ def test_prompt_carries_forest_context_instead_of_blind_line():
     ctx = forest.context(TREES, "vantaraa.eth", "groot.vantaraa.eth")
     prompt = build_prompt("", ctx)
     assert ctx in prompt
-    assert "cannot see the other plants" not in prompt
-    assert "cannot see the other plants" in build_prompt("")
+    assert "cannot see the other plants" not in build_prompt("")
+    assert "Distress calls:" in prompt and "Distress calls:" in build_prompt("")
 
 
 def test_context_shows_reservoir_levels_and_missing_ones():
