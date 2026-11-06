@@ -34,7 +34,7 @@ const walletAddress = await ens.getEnsAddress({ name: plantName, coinType: ZERO_
 if (!walletAddress) throw new Error(`${plantName} has no 0G address record`)
 const persona = (await ens.getEnsText({ name: plantName, key: 'forest.persona' })) ?? 'a quiet plant'
 
-const zg = zeroGClients(agentKey, zeroGRpc)
+const zg = zeroGClients(agentKey, zeroGRpc, Number(process.env.ZERO_G_CHAIN_ID || 16661))
 const forest = await zg.pub.readContract({ address: walletAddress, abi: plantWalletAbi, functionName: 'forest' })
 const [balanceWei, reserveWei, price, perOrder, perDay] = await Promise.all([
   zg.pub.getBalance({ address: walletAddress }),
@@ -96,6 +96,6 @@ const r = await runCheckpoint(
 )
 
 console.log(JSON.stringify({ status: r.status, ...r.summary, reading: r.record.inputs.reading, zeroG: r.record.zeroG }, null, 2))
-if (r.summary.txHash) console.log(`tx    https://chainscan.0g.ai/tx/${r.summary.txHash}`)
+if (r.summary.txHash) console.log(`tx    ${zg.chain.blockExplorers.default.url}/tx/${r.summary.txHash}`)
 if (r.summary.root) console.log(`root  ${r.summary.root}`)
 await pump?.close()

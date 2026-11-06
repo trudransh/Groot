@@ -2,13 +2,20 @@ import { createPublicClient, createWalletClient, defineChain, http, parseAbi, ty
 import { privateKeyToAccount } from 'viem/accounts'
 import type { PlantWalletPort } from '../checkpoint.js'
 
-export const zeroGMainnet = defineChain({
-  id: 16661,
-  name: '0G Mainnet',
-  nativeCurrency: { name: '0G', symbol: '0G', decimals: 18 },
-  rpcUrls: { default: { http: ['https://evmrpc.0g.ai'] } },
-  blockExplorers: { default: { name: 'chainscan', url: 'https://chainscan.0g.ai' } },
-})
+export const ZERO_G_MAINNET = 16661
+export const ZERO_G_GALILEO = 16602
+
+export function zeroGChain(id: number, rpcUrl: string) {
+  const testnet = id === ZERO_G_GALILEO
+  return defineChain({
+    id,
+    name: testnet ? '0G Galileo' : '0G Mainnet',
+    nativeCurrency: { name: '0G', symbol: '0G', decimals: 18 },
+    rpcUrls: { default: { http: [rpcUrl] } },
+    blockExplorers: { default: { name: 'chainscan', url: testnet ? 'https://chainscan-galileo.0g.ai' : 'https://chainscan.0g.ai' } },
+    testnet,
+  })
+}
 
 export const plantWalletAbi = parseAbi([
   'function orderWater(uint32 ml, string requestId, bytes32 root) returns (uint256)',
@@ -24,13 +31,15 @@ export const forestAbi = parseAbi([
   'function maxWaterMlPerDay() view returns (uint32)',
 ])
 
-export function zeroGClients(agentKey: Hex, rpcUrl: string) {
+export function zeroGClients(agentKey: Hex, rpcUrl: string, chainId = ZERO_G_MAINNET) {
   const transport = http(rpcUrl)
+  const chain = zeroGChain(chainId, rpcUrl)
   const account = privateKeyToAccount(agentKey)
   return {
     account,
-    pub: createPublicClient({ chain: zeroGMainnet, transport }),
-    wallet: createWalletClient({ chain: zeroGMainnet, transport, account }),
+    chain,
+    pub: createPublicClient({ chain, transport }),
+    wallet: createWalletClient({ chain, transport, account }),
   }
 }
 

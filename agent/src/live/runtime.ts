@@ -41,6 +41,7 @@ function pumpConnector(env: Env) {
 export function buildRuntimes(env: Env): Map<string, PlantRuntime> {
   const forestName = need(env, 'FOREST_ENS_NAME')
   const zeroGRpc = need(env, 'ZERO_G_RPC_URL')
+  const zeroGChainId = Number(env.ZERO_G_CHAIN_ID || 16661)
   const sepoliaRpc = need(env, 'SEPOLIA_RPC_URL')
   const indexer = need(env, 'ZERO_G_STORAGE_INDEXER')
   const labels = (env.PLANT_LABELS || 'groot,sapling').split(',').map((s) => s.trim().toLowerCase()).filter(Boolean)
@@ -55,7 +56,7 @@ export function buildRuntimes(env: Env): Map<string, PlantRuntime> {
     const rawKey = env[`${label.toUpperCase()}_PRIVATE_KEY`]
     if (!rawKey) continue
     const key = hexKey(rawKey)
-    const zg = zeroGClients(key, zeroGRpc)
+    const zg = zeroGClients(key, zeroGRpc, zeroGChainId)
     const walletAddress = env[`${label.toUpperCase()}_PLANT_WALLET`] as Hex | undefined
     const plantName = `${label}.${forestName}`
     const hasPump = connectPump !== null && pumpPlants.has(label)
