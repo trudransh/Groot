@@ -73,3 +73,7 @@ def test_pumpless_plant_cannot_make_a_paid_refill_offer(no_pump):
 
     reply = asyncio.run(water.offer_refill(200, 1))
     assert "never pay" in reply and plant_state.refill_offer() is None
+
+
+def test_prompt_says_to_write_links_in_full(state):
+    assert "exactly as your tool gave it, starting with https://" in persona.build_prompt()

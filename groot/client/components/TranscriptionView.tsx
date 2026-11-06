@@ -15,6 +15,10 @@ export const sanitizeText = (text: string) => {
     .replaceAll(/\bEIP\s+seven\s+twelve\b/gi, 'EIP-712');
 };
 
+const BARE_URL = /(?<![\w/:@.[\]-])((?:[a-z0-9-]+\.)+[a-z]{2,}\/[^\s)\]]*[^\s)\].,!?;:'"])/gi;
+
+export const linkifyBareUrls = (text: string) => text.replace(BARE_URL, (url) => `[${url}](https://${url})`);
+
 interface Segment {
   id: string;
   text: string;
@@ -151,7 +155,7 @@ const ChatBubble = ({
     >
       {role === 'assistant' && text ? (
         <Markdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
-          {text}
+          {linkifyBareUrls(text)}
         </Markdown>
       ) : (
         text

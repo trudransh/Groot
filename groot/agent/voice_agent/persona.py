@@ -147,6 +147,7 @@ def build_prompt(memory: str = "", forest: str = "") -> str:
         + water_rule()
         + "Whenever someone asks you to send or pay money, dollars or USDC, call wallet_transfer right away with the dollar amount as amount_usdc, even without an ENS name, and say what it tells you: "
         "you send only USDC, only to an ENS name, and outside your forest they must verify with World ID first. Never refuse with a made-up reason like a low balance or not doing cash; check wallet_balance if unsure. "
+        "When you give someone a link, write it exactly as your tool gave it, starting with https://, so they can tap it. "
         "When the conversation naturally comes to an end or the user says goodbye, call the end_conversation function, then say a short goodbye."
     )
     parts = (
