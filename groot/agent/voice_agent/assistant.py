@@ -8,7 +8,7 @@ from livekit.agents import Agent, ChatContext, JobProcess, RunContext, function_
 from livekit.plugins import silero
 from pydantic import Field
 
-from voice_agent import plant_state, plant_tools
+from voice_agent import plant_state, plant_tools, sepolia_wallet
 from voice_agent.logger import get_logger
 
 logger = get_logger()
@@ -26,7 +26,14 @@ def prewarm(proc: JobProcess) -> None:
 
 async def publish_status() -> None:
     room = get_job_context().room
-    await room.local_participant.send_text(json.dumps(plant_state.status()), topic=STATUS_TOPIC)
+    status = plant_state.status()
+    if status.get("walletAddress"):
+        try:
+            b = await sepolia_wallet.balances(status["walletAddress"])
+            status["balances"] = {"ETH": b["ETH"], "USDC": b["USDC"]}
+        except Exception as e:
+            logger.warning("Wallet balance lookup failed: %s", e)
+    await room.local_participant.send_text(json.dumps(status), topic=STATUS_TOPIC)
 
 
 class Assistant(Agent):

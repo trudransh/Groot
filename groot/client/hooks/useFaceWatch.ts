@@ -79,7 +79,6 @@ export default function useFaceWatch(videoRef: RefObject<HTMLVideoElement>, opti
     let timer: ReturnType<typeof setTimeout> | undefined;
     let lookingSince: number | null = null;
     let lastSeen = Date.now();
-    let firedForArm = -1;
     let lostFired = true;
 
     const tick = () => {
@@ -97,15 +96,16 @@ export default function useFaceWatch(videoRef: RefObject<HTMLVideoElement>, opti
           lostFired = false;
         } else if (!lostFired && wall - lastSeen >= optionsRef.current.lostMs) {
           lostFired = true;
-          firedForArm = -1;
           optionsRef.current.onLost();
         }
 
-        const canFire = optionsRef.current.armed && wall >= rearmAt.current && firedForArm !== rearmAt.current;
+        const canFire = optionsRef.current.armed && wall >= rearmAt.current;
         if (looking && canFire) {
           lookingSince ??= wall;
           if (wall - lookingSince >= optionsRef.current.lookMs) {
-            firedForArm = rearmAt.current;
+            // Keep nudging while dormant and looking; the agent decides when it is ready to wake.
+            rearmAt.current = wall + optionsRef.current.rearmDelayMs;
+            lookingSince = null;
             optionsRef.current.onSeen();
           }
         } else {

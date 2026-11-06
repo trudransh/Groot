@@ -335,17 +335,16 @@ export function VoiceAssistant({
       </footer>
       </div>
       <Sidebar>
-        <CardStack tabs={['Camera', 'Selfie', 'Tools', 'Memory', 'Diary']}>
+        <WalletCard status={plantStatus} />
+        <CardStack tabs={['Camera', 'Selfie', 'Tools', 'Memory', 'Diary', 'Forest']}>
           <CameraPreview videoRef={videoRef} status={face.status} error={face.error} dormant={dormant} facing={face.facing} />
           <SelfieCard selfie={selfie} />
           <ToolsCard tools={plantStatus?.tools ?? []} />
           <MemoryCard status={plantStatus} />
           <DiaryDialog entries={diary} />
-        </CardStack>
-        <CardStack tabs={['Wallet', 'Forest']}>
-          <WalletCard address={plantStatus?.walletAddress} ensName={plantStatus?.ensName} />
           <ForestCard />
         </CardStack>
+
       </Sidebar>
     </div>
   );

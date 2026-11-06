@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import time
 import httpx
 import os
 import re
@@ -25,11 +26,14 @@ from voice_agent import diary, plant_state, plant_tools, zero_g
 from voice_agent.inner_loop import InnerLoop
 from voice_agent.presence import PRESENCE_TOPIC, go_dormant, prerecord_greeting, publish_state, wake
 from voice_agent.logger import get_logger
+from livekit.agents import mcp
+import sys
 
 logger = get_logger()
 
 _active_tasks = set()
 IDLE_TIMEOUT_S = float(os.environ.get("IDLE_TIMEOUT_S", "45"))
+REWAKE_AFTER_S = float(os.environ.get("REWAKE_AFTER_S", "20"))
 
 
 @dataclass
@@ -40,6 +44,7 @@ class SessionInfo:
     end_pending: bool = False
     # After a conversation ends, the same face must leave the frame before Groot wakes again.
     await_leave: bool = False
+    rested_at: float = 0.0
 
 
 def _spawn(coro) -> None:
@@ -66,6 +71,7 @@ async def rest(ctx: JobContext, session: AgentSession, inner: InnerLoop, reason:
         return
     await go_dormant(session, ctx.room, reason)
     session.userdata.await_leave = reason != "nobody in frame"
+    session.userdata.rested_at = time.monotonic()
     talk = _recent_talk(session)
     diary.write("conversation", f"Talked with someone ({reason}).\n{talk}" if talk else f"Someone came by ({reason}).")
     inner.poke(f"A conversation just ended ({reason}). Reflect on it briefly.")
@@ -81,7 +87,9 @@ async def async_handle_presence(reader, ctx: JobContext, session: AgentSession, 
     event = (await reader.read_all()).strip()
     if event == "lost":
         session.userdata.await_leave = False
-    if event == "seen" and session.userdata.dormant and not session.userdata.await_leave:
+    # After a conversation ends, a face still in frame wakes Groot only once REWAKE_AFTER_S has passed.
+    waited = time.monotonic() - session.userdata.rested_at >= REWAKE_AFTER_S
+    if event == "seen" and session.userdata.dormant and (not session.userdata.await_leave or waited):
         await agent.update_instructions(build_prompt(_memory()))
         await wake(session, ctx.room, session.tts)
     elif event == "lost" and not session.userdata.dormant:
@@ -126,6 +134,23 @@ async def strip_urls(text: AsyncIterable[str]) -> AsyncIterable[str]:
         yield _EMPTY_PARENS_RE.sub("", _URL_RE.sub("", ready))
     if buffer:
         yield _EMPTY_PARENS_RE.sub("", _URL_RE.sub("", buffer))
+
+
+def wallet_mcp_servers() -> list:
+    # The wallet MCP runs as a child process with this worker's key; none without a key.
+    if not os.environ.get("GROOT_PRIVATE_KEY"):
+        return []
+    return [mcp.MCPServerStdio(command=sys.executable, args=["-m", "voice_agent.wallet_mcp"], env=dict(os.environ), client_session_timeout_seconds=30)]
+
+
+async def refresh_status_forever() -> None:
+    # Keeps the Wallet card's balances fresh, including after transfers made through the wallet MCP.
+    while True:
+        await asyncio.sleep(30)
+        try:
+            await publish_status()
+        except Exception as e:
+            logger.warning("Status refresh failed: %s", e)
 
 
 async def entrypoint(ctx: JobContext):
@@ -173,7 +198,7 @@ async def entrypoint(ctx: JobContext):
     # ------------------------------------------------------------------
     stt_kwargs: dict = {
         "model": "nova-3",
-        "language": "en-US",
+        "language": os.environ.get("DEEPGRAM_LANGUAGE", "multi"),
         "smart_format": True,
         "keyterm": STT_KEYWORDS,
     }
@@ -201,6 +226,7 @@ async def entrypoint(ctx: JobContext):
         turn_handling={"turn_detection": EnglishModel()},
         userdata=SessionInfo(),
         user_away_timeout=IDLE_TIMEOUT_S,
+        mcp_servers=wallet_mcp_servers(),
     )
 
     session.userdata.room_id = room_id
@@ -241,6 +267,7 @@ async def entrypoint(ctx: JobContext):
     _spawn(plant_tools.publish_selfie(ctx.room))
     _spawn(prerecord_greeting(session.tts))
     _spawn(inner.run())
+    _spawn(refresh_status_forever())
 
 
 # ----------------------------------------------------------------------

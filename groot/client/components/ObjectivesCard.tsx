@@ -15,6 +15,7 @@ export interface PlantStatus {
   tools: string[];
   walletAddress: string | null;
   ensName: string | null;
+  balances?: { ETH: string; USDC: string };
 }
 
 export interface Selfie {
@@ -170,27 +171,59 @@ export function MemoryCard({ status }: { status: PlantStatus | null }) {
   );
 }
 
-export function WalletCard({ address, ensName }: { address: string | null | undefined; ensName?: string | null }) {
+const short = (a: string) => `${a.slice(0, 6)}…${a.slice(-4)}`;
+
+/** Wallet on top of the sidebar: name, USDC and ETH balances on Sepolia, address. */
+export function WalletCard({ status }: { status: PlantStatus | null }) {
+  const address = status?.walletAddress;
+  const b = status?.balances;
   return (
-    <Card title="Wallet">
-      {ensName && <p className="mb-1 font-semibold">{ensName}</p>}
+    <div className="flex w-full flex-col gap-2 rounded-2xl bg-white p-3 font-inter text-[12px] text-[#273339] shadow-[0_1px_3px_rgba(0,0,0,0.06)]">
+      <div className="flex items-center justify-between">
+        <p className="font-semibold">Wallet</p>
+        <span className="rounded-full bg-[#F0F3F4] px-2 py-0.5 text-[10px] text-[#6B777C]">Sepolia</span>
+      </div>
+      {status?.ensName && <p className="truncate font-semibold text-[#3F8F4E]">{status.ensName}</p>}
       {address ? (
-        <p className="break-all font-mono text-[11px]" title={address}>
-          {address}
-        </p>
+        <>
+          <div className="grid grid-cols-2 gap-2">
+            <div className="rounded-xl bg-[#F7F9F9] px-2.5 py-2">
+              <p className="text-[10px] uppercase tracking-wider text-[#8E989C]">USDC</p>
+              <p className="text-[18px] font-semibold tabular-nums">{b ? Number(b.USDC).toLocaleString(undefined, { maximumFractionDigits: 2 }) : '…'}</p>
+            </div>
+            <div className="rounded-xl bg-[#F7F9F9] px-2.5 py-2">
+              <p className="text-[10px] uppercase tracking-wider text-[#8E989C]">ETH</p>
+              <p className="text-[18px] font-semibold tabular-nums">{b ? Number(b.ETH).toLocaleString(undefined, { maximumFractionDigits: 4 }) : '…'}</p>
+            </div>
+          </div>
+          <a
+            href={`https://sepolia.etherscan.io/address/${address}`}
+            target="_blank"
+            rel="noreferrer"
+            title={address}
+            className="font-mono text-[11px] text-[#6B777C] hover:text-[#273339]"
+          >
+            {short(address)} ↗
+          </a>
+        </>
       ) : (
         <p className="text-[#8E989C]">No wallet set</p>
       )}
-    </Card>
+    </div>
   );
 }
 
 export function ForestCard() {
+  const me = GROOT.name;
   return (
-    <Card title="autoforest.eth">
+    <Card title="vantaraa.eth">
       <ul className="space-y-0.5">
-        <li>groot.autoforest.eth (me)</li>
-        <li>sapling.autoforest.eth</li>
+        {['groot.vantaraa.eth', 'sapling.vantaraa.eth'].map(n => (
+          <li key={n}>
+            {n}
+            {n === me && ' (me)'}
+          </li>
+        ))}
       </ul>
     </Card>
   );
