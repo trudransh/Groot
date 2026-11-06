@@ -3,7 +3,7 @@ import { DiaryDialog, type DiaryEntry, type MindStep } from '@/components/DiaryD
 import { MicDialogState, MicPermissionDialog, micPermission } from '@/components/MicPermissionDialog';
 import { NoAgentNotification } from '@/components/NoAgentNotification';
 import { GROOT } from '@/config/agents.config';
-import { CardStack, ForestCard, Sidebar, MemoryCard, ReservoirCard, SelfieCard, ToolsCard, WalletCard, type PlantStatus, type Selfie } from '@/components/ObjectivesCard';
+import { CardStack, DistressCard, ForestCard, Sidebar, MemoryCard, ReservoirCard, SelfieCard, ToolsCard, WalletCard, type PlantStatus, type Selfie } from '@/components/ObjectivesCard';
 import TranscriptionView from '@/components/TranscriptionView';
 import { MicIcon } from '@/components/icons/MicIcon';
 import { PhoneDownIcon } from '@/components/icons/PhoneDownIcon';
@@ -382,7 +382,7 @@ export function VoiceAssistant({
           <ForestCard status={plantStatus} />
         </CardStack>
         <WalletCard status={plantStatus} />
-        <ReservoirCard status={plantStatus} />
+        {plantStatus?.hasPump === false ? <DistressCard status={plantStatus} /> : <ReservoirCard status={plantStatus} />}
       </Sidebar>
     </div>
   );

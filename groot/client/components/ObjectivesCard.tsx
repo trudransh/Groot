@@ -8,6 +8,8 @@ import { Children, ReactNode, useRef, useState } from 'react';
 export interface PlantStatus {
   objectives: string;
   plantsInDistress: string[];
+  hasPump?: boolean;
+  distressOn?: boolean;
   lastWateredAt: string | null;
   waterMl: number;
   leafCount: number | null;
@@ -222,6 +224,26 @@ export function WalletCard({ status }: { status: PlantStatus | null }) {
   );
 }
 
+export function DistressCard({ status }: { status: PlantStatus | null }) {
+  const on = status?.distressOn === true;
+  return (
+    <div className="flex w-full flex-col gap-2 rounded-2xl bg-white p-3 font-inter text-[12px] text-[#273339] shadow-[0_1px_3px_rgba(0,0,0,0.06)]">
+      <div className="flex items-center justify-between">
+        <p className="font-semibold">Distress signal</p>
+        <span className="rounded-full bg-[#F0F3F4] px-2 py-0.5 text-[10px] text-[#6B777C]">ENS</span>
+      </div>
+      {status === null ? (
+        <p className="text-[#8E989C]">…</p>
+      ) : on ? (
+        <p className="font-semibold text-[#C0392B]">On: asking the forest for water</p>
+      ) : (
+        <p className="text-[#6B777C]">Off</p>
+      )}
+      <p className="text-[11px] text-[#8E989C]">No pump: a human waters me by hand.</p>
+    </div>
+  );
+}
+
 export function ReservoirCard({ status }: { status: PlantStatus | null }) {
   const max = status?.reservoirMaxMl ?? 1000;
   const ml = status?.reservoirMl;
@@ -266,9 +288,14 @@ export function ForestCard({ status }: { status: PlantStatus | null }) {
               <span className="truncate">
                 {t.name}
                 {t.name === me && ' (me)'}
-                {t.thirsty && ' · thirsty'}
               </span>
-              <span className="shrink-0 tabular-nums text-[#6B777C]">{t.reservoirMl == null ? 'no reservoir' : `${t.reservoirMl} ml`}</span>
+              {t.thirsty ? (
+                <span className="shrink-0 rounded-full bg-[#FDECEA] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-[#C0392B]">
+                  distress
+                </span>
+              ) : (
+                <span className="shrink-0 tabular-nums text-[#6B777C]">{t.reservoirMl == null ? 'ok' : `${t.reservoirMl} ml`}</span>
+              )}
             </li>
           ))}
         </ul>

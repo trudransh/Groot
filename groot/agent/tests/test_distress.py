@@ -281,3 +281,10 @@ def test_inner_loop_offers_signal_distress():
     assert "signal_distress" in inner_loop._TOOL_NAMES
     assert inner_loop.decision_label("signal_distress", {"on": True}) == "Decided to send a distress signal"
     assert inner_loop.decision_label("signal_distress", {"on": False}) == "Decided to turn my distress signal off"
+
+
+def test_status_reports_pump_and_own_signal(sapling):
+    s = plant_state.status()
+    assert s["hasPump"] is False and s["distressOn"] is False
+    asyncio.run(distress.signal_distress(True, "dry"))
+    assert plant_state.status()["distressOn"] is True
