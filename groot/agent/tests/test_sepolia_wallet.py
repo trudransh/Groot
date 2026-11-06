@@ -163,12 +163,13 @@ def _fake_chains(monkeypatch, sepolia, mainnet):
     return calls
 
 
-def test_outside_names_fall_back_to_mainnet_ens(monkeypatch):
-    _fake_chains(monkeypatch, {}, {"tumbuh.eth": SOMEONE})
-    assert asyncio.run(sw.resolve_name("tumbuh.eth")) == SOMEONE
+def test_outside_names_never_resolve_on_mainnet(monkeypatch):
+    calls = _fake_chains(monkeypatch, {}, {"tumbuh.eth": SOMEONE})
+    assert asyncio.run(sw.resolve_name("tumbuh.eth")) is None
+    assert calls == [sw.rpc_url()]
 
 
-def test_sepolia_record_wins_over_mainnet(monkeypatch):
+def test_names_resolve_on_sepolia(monkeypatch):
     other = "0x" + "33" * 20
     _fake_chains(monkeypatch, {"alice.eth": other}, {"alice.eth": SOMEONE})
     assert asyncio.run(sw.resolve_name("alice.eth")) == other

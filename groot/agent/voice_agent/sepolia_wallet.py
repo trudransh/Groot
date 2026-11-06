@@ -130,15 +130,8 @@ def coin_type(chain_id: int) -> int:
     return 0x80000000 | chain_id
 
 
-def mainnet_rpc_url() -> str:
-    return os.environ.get("ENS_MAINNET_RPC_URL", "https://ethereum-rpc.publicnode.com")
-
-
 async def resolve_name(name: str) -> str | None:
-    address = await _resolve_on(rpc_url(), name)
-    if address or in_forest(name):
-        return address
-    return await _resolve_on(mainnet_rpc_url(), name)
+    return await _resolve_on(rpc_url(), name)
 
 
 async def text_record(name: str, key: str) -> str:
