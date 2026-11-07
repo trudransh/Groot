@@ -293,7 +293,7 @@ class InnerLoop:
             await self._mind("awake", f"Thinking on 0G ({self.model})", kind="thinking")
             started = time.monotonic()
             try:
-                resp = await self.client.chat.completions.create(model=self.model, messages=messages, tools=_TOOLS, max_tokens=zero_g.MAX_TOKENS)
+                resp = await self.client.chat.completions.create(model=self.model, messages=messages, tools=_TOOLS, max_tokens=zero_g.MAX_TOKENS, extra_body=zero_g.NO_THINKING)
             except Exception as e:
                 logger.warning("0G call failed, waiting: %s", e)
                 return await self._wait("0G did not answer")

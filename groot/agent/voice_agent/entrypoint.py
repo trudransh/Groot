@@ -248,6 +248,7 @@ async def entrypoint(ctx: JobContext):
             base_url=zero_g_settings.base_url,
             api_key=zero_g_settings.api_key,
             timeout=httpx.Timeout(zero_g_settings.timeout),
+            extra_body=zero_g.NO_THINKING,
         ),
         tts=session_tts,
         # Defaults plus strip_urls: cited links stay in the text, out of the voice.

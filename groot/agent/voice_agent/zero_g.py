@@ -7,9 +7,11 @@ from typing import Any
 from openai import AsyncOpenAI
 
 DEFAULT_BASE_URL = "https://router-api.0g.ai/v1"
-DEFAULT_MODEL = "glm-5.3-flash"
+DEFAULT_MODEL = "deepseek-v4-flash"
+DEFAULT_VISION_MODEL = "deepseek-v4-flash-vision-exp"
 TIMEOUT_SECONDS = 20
 MAX_TOKENS = 2000
+NO_THINKING = {"thinking": {"type": "disabled"}}
 
 
 class ZeroGNotConfigured(RuntimeError):
@@ -22,6 +24,7 @@ class ZeroGConfig:
     base_url: str
     model: str
     timeout: float = TIMEOUT_SECONDS
+    vision_model: str = DEFAULT_VISION_MODEL
 
 
 def config() -> ZeroGConfig:
@@ -32,6 +35,7 @@ def config() -> ZeroGConfig:
         api_key=api_key,
         base_url=os.environ.get("ZG_BASE_URL") or DEFAULT_BASE_URL,
         model=os.environ.get("ZG_MODEL") or DEFAULT_MODEL,
+        vision_model=os.environ.get("ZG_VISION_MODEL") or DEFAULT_VISION_MODEL,
     )
 
 

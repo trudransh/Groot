@@ -14,19 +14,23 @@ def test_config_reads_env(monkeypatch):
     monkeypatch.setenv("ZG_API_KEY", "sk-test")
     monkeypatch.setenv("ZG_BASE_URL", "https://example.test/v1")
     monkeypatch.setenv("ZG_MODEL", "some-model")
+    monkeypatch.setenv("ZG_VISION_MODEL", "some-vision-model")
     config = zero_g.config()
     assert config.api_key == "sk-test"
     assert config.base_url == "https://example.test/v1"
     assert config.model == "some-model"
+    assert config.vision_model == "some-vision-model"
 
 
 def test_config_defaults(monkeypatch):
     monkeypatch.setenv("ZG_API_KEY", "sk-test")
     monkeypatch.delenv("ZG_BASE_URL", raising=False)
     monkeypatch.delenv("ZG_MODEL", raising=False)
+    monkeypatch.delenv("ZG_VISION_MODEL", raising=False)
     config = zero_g.config()
     assert config.base_url == "https://router-api.0g.ai/v1"
-    assert config.model == "glm-5.3-flash"
+    assert config.model == "deepseek-v4-flash"
+    assert config.vision_model == "deepseek-v4-flash-vision-exp"
     assert config.timeout == 20
 
 
@@ -281,9 +285,21 @@ def test_describe_photo_leaves_room_to_think(monkeypatch):
 
     client, completions = fake_client(_response(content="a drooping plant"))
     monkeypatch.setattr(plant_tools.zero_g, "client", lambda: client)
-    monkeypatch.setattr(plant_tools.zero_g, "config", lambda: zero_g.ZeroGConfig("k", "u", "glm-5.3-flash"))
+    monkeypatch.setattr(plant_tools.zero_g, "config", lambda: zero_g.ZeroGConfig("k", "u", "deepseek-v4-flash"))
     assert asyncio.run(plant_tools.describe_photo("data:image/jpeg;base64,AAAA")) == "a drooping plant"
     assert completions.calls[0]["max_tokens"] == zero_g.MAX_TOKENS
+
+
+def test_describe_photo_uses_the_vision_model(monkeypatch):
+    from voice_agent import plant_tools
+
+    client, completions = fake_client(_response(content="a drooping plant"))
+    monkeypatch.setattr(plant_tools.zero_g, "client", lambda: client)
+    monkeypatch.setattr(
+        plant_tools.zero_g, "config", lambda: zero_g.ZeroGConfig("k", "u", "text-only-model", vision_model="sees-images")
+    )
+    asyncio.run(plant_tools.describe_photo("data:image/jpeg;base64,AAAA"))
+    assert completions.calls[0]["model"] == "sees-images"
 
 
 def test_inner_loop_leaves_room_to_think(inner):
@@ -467,3 +483,24 @@ def test_sleep_diary_carries_one_sleeping_suffix(inner):
     asyncio.run(loop._moment(""))
     sleeps = [text for kind, text in loop.notes if kind == "sleep"]
     assert sleeps == ["Still thirsty. (sleeping 15 min)"]
+
+
+def test_every_call_skips_thinking():
+    assert zero_g.NO_THINKING == {"thinking": {"type": "disabled"}}
+
+
+def test_inner_loop_skips_thinking(inner):
+    client, completions = fake_client(_response(tool_calls=[_tool_call("sleep", json.dumps({"minutes": 15, "diary": "ok"}))]))
+    loop = inner(client)
+    asyncio.run(loop._moment(""))
+    assert completions.calls[0]["extra_body"] == zero_g.NO_THINKING
+
+
+def test_describe_photo_skips_thinking(monkeypatch):
+    from voice_agent import plant_tools
+
+    client, completions = fake_client(_response(content="a drooping plant"))
+    monkeypatch.setattr(plant_tools.zero_g, "client", lambda: client)
+    monkeypatch.setattr(plant_tools.zero_g, "config", lambda: zero_g.ZeroGConfig("k", "u", "deepseek-v4-flash"))
+    asyncio.run(plant_tools.describe_photo("data:image/jpeg;base64,AAAA"))
+    assert completions.calls[0]["extra_body"] == zero_g.NO_THINKING

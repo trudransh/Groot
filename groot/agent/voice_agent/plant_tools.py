@@ -74,7 +74,7 @@ async def see_selfie() -> str:
 async def describe_photo(data_url: str) -> str:
     try:
         resp = await zero_g.client().chat.completions.create(
-            model=zero_g.config().model,
+            model=zero_g.config().vision_model,
             messages=[
                 {
                     "role": "user",
@@ -85,6 +85,7 @@ async def describe_photo(data_url: str) -> str:
                 }
             ],
             max_tokens=zero_g.MAX_TOKENS,
+            extra_body=zero_g.NO_THINKING,
         )
     except Exception:
         logger.exception("0G vision call failed")
