@@ -12,6 +12,7 @@ const MAX_PHOTO_CHARS = 14000;
 const PHOTO_SETTLE_MS = 800;
 
 async function openCamera(video: HTMLVideoElement | null, facing: 'user' | 'environment'): Promise<MediaStream> {
+  if (!navigator.mediaDevices?.getUserMedia) throw new Error('Camera needs an https link');
   const stream = await navigator.mediaDevices
     .getUserMedia({ video: { width: 640, height: 640, facingMode: { exact: facing } }, audio: false })
     .catch(() => navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 640, facingMode: facing }, audio: false }));

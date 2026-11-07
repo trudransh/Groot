@@ -49,6 +49,7 @@ export const personaConfig = {
         retry: 'Try again',
         blocked: 'Your microphone is blocked. Allow it from the icon in the address bar, then try again.',
         missing: 'No microphone found. Connect one and try again.',
+        insecure: 'This page was opened over plain http, so the browser hides the microphone and camera. Open it over https (or on localhost) to talk out loud. Typing still works.',
       },
     },
   },

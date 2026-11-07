@@ -1,6 +1,6 @@
 import { AgentAudioVisualizerRadial } from '@/components/AgentAudioVisualizerRadial';
 import { DiaryDialog, type DiaryEntry, type MindStep } from '@/components/DiaryDialog';
-import { MicDialogState, MicPermissionDialog, micPermission } from '@/components/MicPermissionDialog';
+import { MicDialogState, MicPermissionDialog, mediaAvailable, micPermission } from '@/components/MicPermissionDialog';
 import { NoAgentNotification } from '@/components/NoAgentNotification';
 import { GROOT } from '@/config/agents.config';
 import { CardStack, DistressCard, ForestCard, Sidebar, MemoryCard, ReservoirCard, SelfieCard, ToolsCard, WalletCard, type PlantStatus, type Selfie } from '@/components/ObjectivesCard';
@@ -32,6 +32,8 @@ const LOOK_MS = 1500;
 const LOST_MS = 10000;
 // After Groot goes back to rest, wait this long before a look can wake it again.
 const REARM_MS = 3000;
+const TAP_MS = 300;
+const TAP_HINT_MS = 1800;
 
 export function VoiceAssistant({
   agent,
@@ -161,6 +163,7 @@ export function VoiceAssistant({
   const [micDialog, setMicDialog] = useState<MicDialogState | null>(null);
 
   const enableMic = async () => {
+    if (!mediaAvailable()) return setMicDialog('insecure');
     try {
       await room.localParticipant.setMicrophoneEnabled(true, { noiseSuppression: true, echoCancellation: true, autoGainControl: false, voiceIsolation: true });
     } catch (err) {
@@ -170,17 +173,34 @@ export function VoiceAssistant({
   };
 
   const requestMic = async () => {
+    if (!mediaAvailable()) return setMicDialog('insecure');
     const permission = await micPermission();
     if (permission === 'granted') enableMic();
     else setMicDialog(permission === 'denied' ? 'blocked' : 'ask');
   };
 
+  const pressedAt = useRef(0);
+  const tapHintTimer = useRef<ReturnType<typeof setTimeout>>();
+  const [tapHint, setTapHint] = useState(false);
+  useEffect(() => () => clearTimeout(tapHintTimer.current), []);
+
   const startTalking = () => {
     if (!micEnabled) return requestMic();
     if (dormantRef.current) sendPresence('seen');
+    pressedAt.current = Date.now();
+    setTapHint(false);
     setTalking(true);
   };
   const stopTalking = () => setTalking(false);
+  const releaseHold = () => {
+    if (pressedAt.current && Date.now() - pressedAt.current < TAP_MS) {
+      setTapHint(true);
+      clearTimeout(tapHintTimer.current);
+      tapHintTimer.current = setTimeout(() => setTapHint(false), TAP_HINT_MS);
+    }
+    pressedAt.current = 0;
+    setTalking(false);
+  };
 
   const startTalkingRef = useRef(startTalking);
   startTalkingRef.current = startTalking;
@@ -243,14 +263,29 @@ export function VoiceAssistant({
   };
 
   const inSession = !ended;
+  const [panel, setPanel] = useState<'diary' | 'plant' | null>(null);
 
   return (
     // Header, scrolling messages and input stack as three rows, so the input
     // never covers the messages and the messages get all the spare height.
     <div className="fixed inset-0 flex bg-[#F5F5F5]">
-      <aside className="relative z-20 h-full w-[260px] shrink-0 overflow-y-auto py-5 pl-5">
+      <aside
+        className={clsx(
+          'fixed inset-y-0 left-0 z-40 w-[280px] max-w-[85vw] overflow-y-auto bg-[#F5F5F5] p-5 shadow-xl transition-transform duration-300',
+          panel === 'diary' ? 'translate-x-0' : '-translate-x-full',
+          'md:relative md:z-20 md:h-full md:w-[260px] md:max-w-none md:shrink-0 md:translate-x-0 md:bg-transparent md:pr-0 md:shadow-none'
+        )}
+      >
         <DiaryDialog entries={diary} mind={mind} />
       </aside>
+      {panel && (
+        <button
+          type="button"
+          aria-label="Close panel"
+          onClick={() => setPanel(null)}
+          className="fixed inset-0 z-30 bg-black/30 md:hidden"
+        />
+      )}
       <div className="relative flex min-w-0 flex-1 flex-col">
       {/* Leaves at once: no goodbye, no end card. */}
       <button
@@ -258,10 +293,14 @@ export function VoiceAssistant({
         onClick={onRestart}
         aria-label={moodConfig.backLabel}
         title={moodConfig.backLabel}
-        className="absolute left-4 top-8 z-10 h-11 w-11 rounded-full bg-white text-[#273339] flex items-center justify-center shadow-md transition-colors hover:bg-[#F5F5F5] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#3F8F4E]"
+        className="absolute left-4 top-4 z-10 h-11 w-11 md:top-8 rounded-full bg-white text-[#273339] flex items-center justify-center shadow-md transition-colors hover:bg-[#F5F5F5] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#3F8F4E]"
       >
         <BackIcon />
       </button>
+      <div className="absolute right-4 top-4 z-10 flex gap-2 md:hidden">
+        <PanelButton label="Diary" onClick={() => setPanel('diary')} />
+        <PanelButton label="Plant" onClick={() => setPanel('plant')} />
+      </div>
       <div
         className="absolute inset-0 pointer-events-none -z-10"
         style={{
@@ -272,7 +311,7 @@ export function VoiceAssistant({
       ></div>
 
 
-      <div className="min-h-0 flex-1">
+      <div className="min-h-0 flex-1 pt-16 md:pt-0">
         <TranscriptionView
           mood={mood}
           combinedTranscriptions={combinedTranscriptions}
@@ -330,22 +369,30 @@ export function VoiceAssistant({
 
             {/* Call controls. The rings are LiveKit's radial visualizer: they follow
                 the voice level, and for Groot also show listening and thinking. */}
-            <div className="flex items-center justify-center gap-8 pt-1">
-              <div className="flex flex-col items-center gap-1">
+            <div className="flex select-none items-center justify-center gap-4 pb-5 pt-1 [-webkit-touch-callout:none] sm:gap-8">
+              <div className="relative">
                 <RingButton
                   label={micEnabled ? 'Hold to talk (or hold Space)' : moodConfig.micUnmuteLabel}
                   pressed={talking}
                   onPress={startTalking}
-                  onRelease={stopTalking}
+                  onRelease={releaseHold}
                   disabled={micPending || !inSession}
                   state={ringState(!talking, userSpeaking ? 'speaking' : 'listening')}
                   audioTrack={micTrackRef}
                   color={accent}
                   dim={!talking}
                 >
-                  {micEnabled ? <MicIcon color={talking ? accent : '#273339'} /> : <MicOffIcon />}
+                  {micEnabled ? <MicIcon color={talking ? '#FFFFFF' : '#273339'} /> : <MicOffIcon />}
                 </RingButton>
-                <span className="font-inter text-xs text-[#5B666B]">{talking ? 'Listening…' : micEnabled ? 'Hold to talk' : 'Turn on mic'}</span>
+                <span
+                  aria-live="polite"
+                  className={clsx(
+                    'absolute left-1/2 top-full -translate-x-1/2 whitespace-nowrap font-inter text-xs',
+                    talking || tapHint ? 'font-semibold text-[#3F8F4E]' : 'text-[#5B666B]'
+                  )}
+                >
+                  {talking ? 'Listening…' : tapHint ? 'Keep holding to talk' : micEnabled ? 'Hold to talk' : 'Turn on mic'}
+                </span>
               </div>
               <button
                 type="button"
@@ -353,7 +400,7 @@ export function VoiceAssistant({
                 disabled={dormant}
                 aria-label={moodConfig.endCallLabel}
                 title={moodConfig.endCallLabel}
-                className="h-14 w-14 shrink-0 rounded-full bg-[#F06444] hover:bg-[#DC2626] text-white flex items-center justify-center shadow-md transition-colors disabled:opacity-60 disabled:cursor-wait focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#DC2626]"
+                className="h-14 w-14 shrink-0 rounded-full bg-[#F06444] [@media(hover:hover)]:hover:bg-[#DC2626] active:scale-95 text-white flex items-center justify-center shadow-md transition-colors disabled:opacity-60 disabled:cursor-wait focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#DC2626]"
               >
                 <PhoneDownIcon />
               </button>
@@ -373,7 +420,7 @@ export function VoiceAssistant({
         )}
       </footer>
       </div>
-      <Sidebar>
+      <Sidebar mobileOpen={panel === 'plant'}>
         <CardStack tabs={['Camera', 'Selfie', 'Tools', 'Memory', 'Forest']}>
           <CameraPreview videoRef={videoRef} status={face.status} error={face.error} dormant={dormant} facing={face.facing} />
           <SelfieCard selfie={selfie} />
@@ -385,6 +432,18 @@ export function VoiceAssistant({
         {plantStatus?.hasPump === false ? <DistressCard status={plantStatus} /> : <ReservoirCard status={plantStatus} />}
       </Sidebar>
     </div>
+  );
+}
+
+function PanelButton({ label, onClick }: { label: string; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="h-11 rounded-full bg-white px-4 font-inter text-sm font-medium text-[#273339] shadow-md transition-colors hover:bg-[#F5F5F5] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#3F8F4E]"
+    >
+      {label}
+    </button>
   );
 }
 
@@ -453,6 +512,7 @@ function RingButton({
   dim?: boolean;
   children: ReactNode;
 }) {
+  const holding = !!onRelease && pressed;
   const hold = onRelease
     ? {
         onPointerDown: (e: React.PointerEvent<HTMLButtonElement>) => {
@@ -482,7 +542,12 @@ function RingButton({
         aria-pressed={pressed}
         aria-label={label}
         title={label}
-        className="relative h-14 w-14 touch-none select-none rounded-full bg-white text-[#273339] flex items-center justify-center shadow-md transition-colors hover:bg-[#F5F5F5] disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#3F8F4E]"
+        className={clsx(
+          'relative h-14 w-14 touch-none select-none rounded-full text-[#273339] flex items-center justify-center shadow-md transition-[background-color,transform] duration-150 [-webkit-touch-callout:none] disabled:cursor-not-allowed',
+          holding ? 'scale-110' : 'bg-white active:scale-95 [@media(hover:hover)]:hover:bg-[#F5F5F5]',
+          'disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#3F8F4E]'
+        )}
+        style={holding ? { backgroundColor: color } : undefined}
       >
         {children}
       </button>

@@ -5,7 +5,9 @@ import { AgentMoodI } from '@/types/agent';
 import clsx from 'clsx';
 import { useEffect, useRef, useState } from 'react';
 
-export type MicDialogState = 'ask' | 'asking' | 'blocked' | 'missing';
+export type MicDialogState = 'ask' | 'asking' | 'blocked' | 'missing' | 'insecure';
+
+export const mediaAvailable = () => typeof navigator !== 'undefined' && !!navigator.mediaDevices?.getUserMedia;
 
 /** 'granted' | 'prompt' | 'denied', or 'unknown' where the browser can't say. */
 export async function micPermission(): Promise<PermissionState | 'unknown'> {
@@ -35,13 +37,14 @@ export function MicPermissionDialog({
 }) {
   const text = personaConfig.moods.english.mic;
   const ref = useRef<HTMLDialogElement>(null);
-  const [state, setState] = useState<MicDialogState>(initialState);
+  const [state, setState] = useState<MicDialogState>(mediaAvailable() ? initialState : 'insecure');
 
   useEffect(() => {
     ref.current?.showModal();
   }, []);
 
   const requestMic = async () => {
+    if (!mediaAvailable()) return setState('insecure');
     setState('asking');
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -53,7 +56,7 @@ export function MicPermissionDialog({
     }
   };
 
-  const failed = state === 'blocked' || state === 'missing';
+  const failed = state === 'blocked' || state === 'missing' || state === 'insecure';
 
   return (
     <dialog
@@ -69,7 +72,9 @@ export function MicPermissionDialog({
         role={failed ? 'alert' : undefined}
         className={clsx('mt-2 text-sm', failed ? 'text-[#DC2626]' : 'text-[#5C686D]')}
       >
-        {state === 'blocked'
+        {state === 'insecure'
+          ? text.insecure
+          : state === 'blocked'
           ? text.blocked
           : state === 'missing'
             ? text.missing

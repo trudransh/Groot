@@ -114,23 +114,30 @@ export function CardStack({ tabs, children }: { tabs: string[]; children: ReactN
 }
 
 /** Right-hand column of card stacks. Collapses to nothing but a chevron. */
-export function Sidebar({ children }: { children: ReactNode }) {
+export function Sidebar({ mobileOpen, children }: { mobileOpen: boolean; children: ReactNode }) {
   const [open, setOpen] = useState(true);
   return (
-    <aside className={clsx('relative z-20 h-full shrink-0 transition-[width] duration-300', open ? 'w-[240px]' : 'w-0')}>
+    <aside
+      className={clsx(
+        'fixed inset-y-0 right-0 z-40 w-[280px] max-w-[85vw] bg-[#F5F5F5] shadow-xl transition-transform duration-300',
+        mobileOpen ? 'translate-x-0' : 'translate-x-full',
+        'md:relative md:z-20 md:h-full md:max-w-none md:shrink-0 md:translate-x-0 md:bg-transparent md:shadow-none md:transition-[width]',
+        open ? 'md:w-[240px]' : 'md:w-0'
+      )}
+    >
       <button
         type="button"
         onClick={() => setOpen(o => !o)}
         aria-expanded={open}
         aria-label={open ? 'Collapse sidebar' : 'Expand sidebar'}
-        className="absolute right-full top-1/2 -translate-y-1/2 flex h-8 w-6 items-center justify-center text-[#8E989C] hover:text-[#273339]"
+        className="absolute right-full top-1/2 -translate-y-1/2 hidden h-8 w-6 items-center justify-center text-[#8E989C] hover:text-[#273339] md:flex"
       >
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden="true">
           <path d={open ? 'M9 6l6 6-6 6' : 'M15 6l-6 6 6 6'} strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       </button>
       {/* Kept mounted when collapsed so the camera keeps watching. */}
-      <div className={clsx('h-full w-[240px] space-y-6 overflow-y-auto py-5 pr-5', !open && 'invisible')}>{children}</div>
+      <div className={clsx('h-full w-full space-y-6 overflow-y-auto p-5 md:w-[240px] md:pl-0', !open && 'md:invisible')}>{children}</div>
     </aside>
   );
 }
